@@ -32,6 +32,13 @@ source-include = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v"
+filterwarnings = [
+    "error",
+    "ignore:The '__version__' attribute is deprecated and will be removed in Click 9.1:DeprecationWarning", # cloup
+    "ignore:invalid escape sequence:DeprecationWarning", # pydub
+    "ignore:invalid escape sequence:SyntaxWarning", # pydub
+    "ignore:'audioop' is deprecated and slated for removal:DeprecationWarning", # audioop
+]
 
 [tool.coverage.run]
 branch = true
@@ -42,6 +49,7 @@ files = ["src"]
 show_error_codes = true
 pretty = true
 strict = true
+follow_untyped_imports = true
 
 [tool.ruff]
 src = ["src"]
