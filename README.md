@@ -11,12 +11,9 @@
 
 - [Features](#features)  
 - [Installation](#installation)  
-- [Quick Start](#quick start)  
-- [API Reference](#api reference)  
-  - [`Grid.__init__`](#gridinit)  
-  - [`Grid.__getitem__`](#gridgetitem)  
-  - [`Grid.__setitem__`](#gridsetitem)  
-- [More to Come](#more to come)  
+- [Quick Start](#quick-start)  
+- [API Reference](#api-reference)  
+- [More to Come](#more-to-come)  
 
 ---
 
