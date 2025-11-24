@@ -23,19 +23,19 @@
 - **Automatic layout** – cells are arranged with `arrange_in_grid`.  
 - **Margin & buffer control** – fine‑tune spacing between cells and padding inside cells.  
 - **Pythonic indexing** – `grid[row, col]` returns the stored `Mobject`; `grid[row, col] = obj` places an object. Negative indices are allowed and behave like normal Python sequences.  
-- **Alignment vectors** – optionally align a `Mobject` to any edge of a cell (`grid[row, col, UP]`, `grid[row, col, DL]`, etc.).  
+- **Alignment vectors** – align a `Mobject` to any edge/corner in a cell (`grid[row, col, UP]`, `grid[row, col, DL]`, etc.).  
 
 ---
 
 ## Installation  
 
-For now there is no Pypi package. Install by adding to your `manim` project:
-- create the project if necessary:
+For now there is no Pypi package. Install by adding to your `manim` project:  
+- create the project if necessary:  
 ```bash
 uv init myproject
 cd myproject
 ```
-- add the plugin to your newly created or existing project with all the available services:
+- add the plugin to your newly created or existing project:  
 ```bash
 uv add git+https://github.com/maejam/manim-grid.git
 ```
@@ -85,16 +85,18 @@ class GridDemo(Scene):
 
 ### `Grid.__init__(self, row_heights, col_widths, buff=0.0, margin=0.1, **kwargs)`  
 
-| Parameter     | Type                            | Description                                                            |
-|---------------|---------------------------------|------------------------------------------------------------------------|
-| `row_heights` | `Sequence[float]`               | Height of each row (top-to-bottom).                                    |
-| `col_widths`  | `Sequence[float]`               | Width of each column (left-to-right).                                  |
-| `buff`        | `float` \| `tuple[float,float]` | Gap between cells (a single float is used for both directions).        |
-| `margin`      | `float` \| `tuple[float,float]` | Padding inside each cell (a single float is used for both directions). |
-| `**kwargs`    | –                               | Passed straight to the parent `Mobject`                                |
+| Parameter     | Type                                        | Description                           |
+|---------------|---------------------------------------------|---------------------------------------|
+| `row_heights` | `Sequence[float]`                           | Height of each row (top-to-bottom).   |
+| `col_widths`  | `Sequence[float]`                           | Width of each column (left-to-right). |
+| `buff`        | `float` \| `tuple[float,float]`<sup>*</sup> | Gap between cells.                    |
+| `margin`      | `float` \| `tuple[float,float]`<sup>*</sup> | Padding inside each cell.             |
+| `**kwargs`    | –                                           | Passed to `Mobject`.                  |
+
+<sup>*</sup>If a single float is given, it is used for both directions. A 2-tuple can be passed to differentiate horizontal and vertical buffer/margin.  
 
 Attributes:  
-- `self.cells` – a list-of-lists of `Rectangle`s. Gives access to individual cells: ``grid.cells[row_num][col_num]``  
+- `self.cells` – a list-of-lists of Rectangles. Gives access to individual cells: ``grid.cells[row][col]``.  
 - `self.grid` – a flat `VGroup` containing the same rectangles, arranged in a grid.  
 
 ---
@@ -103,8 +105,8 @@ Attributes:
 
     obj = grid[row, col]
 
-Returns the `Mobject` stored at the given cell.  
-* Supports negative indices (`-1` -> last row/column).  
+Returns the `Mobject` stored in the given cell.  
+* Supports negative indices (`-1` => last row/column).  
 * Raises `IndexError` if the indices are out of bounds.  
 
 ---
@@ -118,14 +120,14 @@ Returns the `Mobject` stored at the given cell.
 * `idx` can be a 2-tuple `(row, col)` or a 3-tuple `(row, col, alignment)`.  
 * `alignment` is a `Vector3D` (e.g. `UP`, `DR`, ...).  
 * Performs the same bounds checking as `__getitem__`.  
-* `Grid` is only a positioning helper. Setting a mobject in a cell does not add it to the Scene and does not remove the previous mobject in that cell from the Scene. This is intentional to give more control to the user (e.g. using `Transform` to morph the old mobject into the new one).
+* `Grid` is only a positioning helper. Setting a mobject in a cell does not add it to the Scene and does not remove the previous mobject in that cell from the Scene. This is intentional to give more control to the user (e.g. using `Transform` to morph the old mobject into the new one).  
 
 ---
 
 ## More to come
 
-- Grids that span the whole screen.
-- Specialized Grids for text and code.
-- Indexing rows and columns with labels.
+- Grids that span the whole screen.  
+- Specialized Grids for text and code.  
+- Indexing rows and columns with labels.  
 
-Contributions and Ideas are welcomed!
+Contributions and Ideas are welcomed!  
