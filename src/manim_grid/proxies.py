@@ -76,7 +76,9 @@ class _BaseProxy:
         self._attr = attr
 
     def __str__(self) -> str:
-        vec = np.vectorize(lambda cell: str(cell.mob), otypes=[np.str_])
+        vec = np.vectorize(
+            lambda cell: str(getattr(cell, self._attr)), otypes=[np.str_]
+        )
         return str(vec(self._grid._cells[:]))
 
     def __repr__(self) -> str:

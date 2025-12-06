@@ -10,11 +10,18 @@ from manim_grid.exceptions import GridValueError
 # ----------------------------------------------------------------------
 def test_repr(simple_grid):
     assert repr(simple_grid.mobs) == "<MobsProxy of size (2, 3)>"
+    assert repr(simple_grid.olds) == "<OldsProxy of size (2, 3)>"
 
 
 def test_str(simple_grid):
+    simple_grid.mobs[0, 0] = m.Square()
+    simple_grid.mobs[0, 0] = m.Circle()
     assert (
-        str(simple_grid.mobs) == "[['EmptyMobject' 'EmptyMobject' 'EmptyMobject']\n "
+        str(simple_grid.mobs) == "[['Circle' 'EmptyMobject' 'EmptyMobject']\n "
+        "['EmptyMobject' 'EmptyMobject' 'EmptyMobject']]"
+    )
+    assert (
+        str(simple_grid.olds) == "[['Square' 'EmptyMobject' 'EmptyMobject']\n "
         "['EmptyMobject' 'EmptyMobject' 'EmptyMobject']]"
     )
 
