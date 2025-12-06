@@ -1,7 +1,8 @@
+from collections.abc import Sequence
 from typing import Any, TypeAlias, TypeGuard
 
 import numpy as np
-from manim.typing import Vector3D
+from manim.typing import Vector3DLike
 
 """Indexing.
 
@@ -119,18 +120,18 @@ SequenceIndex: TypeAlias = (
 """An index that is resolved to a sequence of objects."""
 
 # Specialized indexes.
-AlignedScalarIndex: TypeAlias = tuple[SingleKey, SingleKey, Vector3D]
+AlignedScalarIndex: TypeAlias = tuple[SingleKey, SingleKey, Vector3DLike]
 """A full index with alignment resolved to a scalar object."""
 
 AlignedSequenceIndex: TypeAlias = (
-    tuple[SingleKey, Vector3D]
-    | tuple[SequenceKey, Vector3D]
-    | tuple[SingleKey, SequenceKey, Vector3D]
-    | tuple[SequenceKey, SingleKey, Vector3D]
-    | tuple[SequenceKey, SequenceKey, Vector3D]
-    | tuple[MaskArrayIndex, Vector3D]
-    | tuple[IntArrayIndex, Vector3D]
-    | tuple[StrArrayIndex, Vector3D]
+    tuple[SingleKey, Vector3DLike]
+    | tuple[SequenceKey, Vector3DLike]
+    | tuple[SingleKey, SequenceKey, Vector3DLike]
+    | tuple[SequenceKey, SingleKey, Vector3DLike]
+    | tuple[SequenceKey, SequenceKey, Vector3DLike]
+    | tuple[MaskArrayIndex, Vector3DLike]
+    | tuple[IntArrayIndex, Vector3DLike]
+    | tuple[StrArrayIndex, Vector3DLike]
 )
 """A full index with alignment resolved to a sequence of objects."""
 
@@ -199,14 +200,20 @@ def is_2d_str_index(index: Any) -> TypeGuard[StrArrayIndex]:
     )
 
 
-def is_vector_3d_compatible(vec: Any) -> TypeGuard[Vector3D]:
-    """Return ``True`` if ``vec`` **could** be a ``Vector3D`` object.
+def is_vector_3d_like(vec: Any) -> TypeGuard[Vector3DLike]:
+    """Return ``True`` if ``vec`` is a 3-dimensional vector: ``[float, float, float]``.
 
-    Any float64 numpy array with shape (3,) will pass this check.
+    This represents anything which can be converted to a Vector3D numpy array.
     """
-    return (
+    seq = (
+        isinstance(vec, Sequence)
+        and len(vec) == 3
+        and all(isinstance(v, (int, float)) for v in vec)
+    )
+    arr = (
         isinstance(vec, np.ndarray)
         and vec.ndim == 1
         and vec.shape[0] == 3
         and vec.dtype == np.float64
     )
+    return seq or arr
