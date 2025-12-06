@@ -14,8 +14,8 @@ def test_repr(simple_grid):
 
 def test_str(simple_grid):
     assert (
-        str(simple_grid.mobs)
-        == "[['Mobject' 'Mobject' 'Mobject']\n ['Mobject' 'Mobject' 'Mobject']]"
+        str(simple_grid.mobs) == "[['EmptyMobject' 'EmptyMobject' 'EmptyMobject']\n "
+        "['EmptyMobject' 'EmptyMobject' 'EmptyMobject']]"
     )
 
 
