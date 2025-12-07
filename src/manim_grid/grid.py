@@ -7,7 +7,8 @@ import numpy as np
 from manim.typing import Vector3D
 
 from manim_grid.labels import LabelMapper
-from manim_grid.proxies import MobsProxy, OldsProxy
+from manim_grid.proxies.mobs_proxy import MobsProxy
+from manim_grid.proxies.olds_proxy import OldsProxy
 
 
 class EmptyMobject(m.Mobject):
