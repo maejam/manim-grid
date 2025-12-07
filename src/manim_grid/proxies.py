@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Generic, Literal, Never, TypeVar, cast, overload
 
 import manim as m
@@ -10,6 +10,7 @@ from manim_grid.exceptions import GridValueError
 from manim_grid.typing import (
     AlignedScalarIndex,
     AlignedSequenceIndex,
+    MaskArrayIndex,
     ScalarIndex,
     SequenceIndex,
     is_scalar_index,
@@ -47,6 +48,9 @@ SSequenceIdxT = TypeVar("SSequenceIdxT")
 SValT = TypeVar("SValT")
 """Describe the scalar value type set through ``__setitem__``."""
 
+MISSING = object()
+"""A sentinel value for missing attributes."""
+
 
 class _BaseProxy:
     """Base class for all proxy objects.
@@ -83,6 +87,44 @@ class _BaseProxy:
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} of size {self._grid._cells.shape}>"
+
+    def mask(
+        self, *, predicate: Callable[[Any], bool] | None = None, **kwargs: Any
+    ) -> MaskArrayIndex:
+        """Return a boolean ndarray with the same shape as the Cell matrix.
+
+        This can be used as a boolean mask on any proxy to filter the selected objects.
+        This method offers 2 ways to filter objects: a predicate and keyword arguments.
+        Both conditions must be satisfied for an object to be included in the selection
+        (i.e. for its index in the generated mask to be ``True``).
+
+        Parameters
+        ----------
+        predicate
+            A callable receiving the stored object and returning a boolean. The objects
+            in each Cell will not be selected if the returned value is ``False``.
+        kwargs
+            Key/value pairs describing object attributes and values that must also be
+            satisfied for the object to be selected. If an object does not have the
+            ``key`` attribute or if its value does not correspond to the provided
+            ``value``, it will not be selected.
+        """
+        values = np.vectorize(lambda cell: getattr(cell, self._attr), otypes=[object])(
+            self._grid._cells
+        )
+
+        if predicate is None and not kwargs:
+            raise ValueError("Provide a predicate or at least one keyword filter.")
+
+        def combine(obj: object) -> bool:
+            selected = True
+            if predicate is not None:
+                selected = selected and predicate(obj)
+            for key, value in kwargs.items():
+                selected = selected and getattr(obj, key, MISSING) == value
+            return selected
+
+        return cast(MaskArrayIndex, np.vectorize(combine, otypes=[bool])(values))
 
 
 class _ReadableProxy(Generic[GScalarIdxT, GSequenceIdxT, GValT], _BaseProxy):

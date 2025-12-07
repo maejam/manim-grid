@@ -151,6 +151,15 @@ def is_scalar_index(index: Any) -> TypeGuard[ScalarIndex]:
     )
 
 
+def _is_valid_dtype(arr: np.ndarray) -> bool:
+    """Return ``True`` of the provided ``arr`` is of dtype bool|int|str."""
+    return (
+        np.issubdtype(arr.dtype, np.bool_)
+        or np.issubdtype(arr.dtype, np.int_)
+        or np.issubdtype(arr.dtype, np.str_)
+    )
+
+
 def is_sequence_key(index: Any) -> TypeGuard[SequenceKey]:
     """Return ``True`` iff ``index`` is compatible with ``SequenceKey``."""
     listk = isinstance(index, list) and all(is_single_key(k) for k in index)
@@ -161,9 +170,7 @@ def is_sequence_key(index: Any) -> TypeGuard[SequenceKey]:
         and isinstance(index.step, (int | None))
     )
     arrayk = (
-        isinstance(index, np.ndarray)
-        and index.ndim == 1
-        and index.dtype in {np.bool_, np.int_, np.str_}
+        isinstance(index, np.ndarray) and index.ndim == 1 and _is_valid_dtype(index)
     )
     return listk or slicek or arrayk
 
@@ -177,9 +184,7 @@ def is_sequence_index(index: Any) -> TypeGuard[SequenceIndex]:
         and not all(is_single_key(k) for k in index)
     )
     array_idx = (
-        isinstance(index, np.ndarray)
-        and index.ndim == 2
-        and index.dtype in {np.bool_, np.int_, np.str_}
+        isinstance(index, np.ndarray) and index.ndim == 2 and _is_valid_dtype(index)
     )
     return is_single_key(index) or is_sequence_key(index) or tup_idx or array_idx
 
