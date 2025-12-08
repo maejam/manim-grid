@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -37,8 +37,11 @@ GScalarIdxT = TypeVar("GScalarIdxT")
 GSequenceIdxT = TypeVar("GSequenceIdxT")
 """Describe an additional sequence index form for ``__getitem``."""
 
-GValT = TypeVar("GValT")
+GScalarValT = TypeVar("GScalarValT")
 """Describe the scalar value type returned by ``__getitem__``."""
+
+GSequenceValT = TypeVar("GSequenceValT")
+"""Describe the sequence value type returned by ``__getitem__``."""
 
 SScalarIdxT = TypeVar("SScalarIdxT")
 """Describe an additional scalar index form for ``__setitem``."""
@@ -46,8 +49,11 @@ SScalarIdxT = TypeVar("SScalarIdxT")
 SSequenceIdxT = TypeVar("SSequenceIdxT")
 """Describe an additional sequence index form for ``__setitem``."""
 
-SValT = TypeVar("SValT")
+SScalarValT = TypeVar("SScalarValT")
 """Describe the scalar value type set through ``__setitem__``."""
+
+SSequenceValT = TypeVar("SSequenceValT")
+"""Describe the sequence value type set through ``__setitem__``."""
 
 MISSING = object()
 """A sentinel value for missing attributes."""
@@ -128,7 +134,9 @@ class _BaseProxy:
         return cast(MaskArrayIndex, np.vectorize(combine, otypes=[bool])(values))
 
 
-class ReadableProxy(Generic[GScalarIdxT, GSequenceIdxT, GValT], _BaseProxy):
+class ReadableProxy(
+    Generic[GScalarIdxT, GSequenceIdxT, GScalarValT, GSequenceValT], _BaseProxy
+):
     """Mixin that implements read-only indexing for a proxy.
 
     Sub-classes inherit ``__getitem__`` and the default implementations of
@@ -149,14 +157,14 @@ class ReadableProxy(Generic[GScalarIdxT, GSequenceIdxT, GValT], _BaseProxy):
     """
 
     @overload
-    def __getitem__(self, index: ScalarIndex | GScalarIdxT) -> GValT: ...
+    def __getitem__(self, index: ScalarIndex | GScalarIdxT) -> GScalarValT: ...
 
     @overload
-    def __getitem__(self, index: SequenceIndex | GSequenceIdxT) -> list[GValT]: ...
+    def __getitem__(self, index: SequenceIndex | GSequenceIdxT) -> GSequenceValT: ...
 
     def __getitem__(
         self, index: ScalarIndex | GScalarIdxT | SequenceIndex | GSequenceIdxT
-    ) -> GValT | list[GValT]:
+    ) -> GScalarValT | GSequenceValT:
         """Retrieve the attribute value(s) for *index*.
 
         This method performs three steps:
@@ -175,9 +183,9 @@ class ReadableProxy(Generic[GScalarIdxT, GSequenceIdxT, GValT], _BaseProxy):
 
         Returns
         -------
-        GValT | list[GValT]
-            Single value when the selector resolves to one cell, otherwise a list of
-            values ordered row-major.
+        GScalarValT | GSequenceValT
+            GScalarValT if the indexed selection resolves to one Cell, otherwise
+            GSequenceValT.
         """
         idx, kwargs = self._preprocess_get(index)
         np_index = self._grid._label_mapper.map_index(idx)
@@ -216,9 +224,10 @@ class ReadableProxy(Generic[GScalarIdxT, GSequenceIdxT, GValT], _BaseProxy):
         assert is_scalar_index(index) or is_sequence_index(index)
         return index, {}
 
+    @abstractmethod
     def _postprocess_get(
-        self, subarray: "Cell | np.ndarray", **_: Any
-    ) -> GValT | list[GValT]:
+        self, subarray: "Cell | np.ndarray", **kwargs: Any
+    ) -> GScalarValT | GSequenceValT:
         """Convert the raw ``subarray`` into the expected return type.
 
         Parameters
@@ -227,24 +236,20 @@ class ReadableProxy(Generic[GScalarIdxT, GSequenceIdxT, GValT], _BaseProxy):
             Result of the numpy selector applied to ``self._grid._cells``.
             It may be a ``Cell`` or an ``ndarray`` of ``Cell`` objects.
 
-        **_
-            Placeholder for future keyword arguments - ignored by the default
-            implementation.
+        **kwargs
+            Keyword arguments forwarded from ``_preprocess_get``.
 
         Returns
         -------
-        GValT | list[GValT]
-            Single value or list of values.
+        GScalarValT | GSequenceValT
+            Dependending on the indexed selection contained in ``subarray``.
         """
-        from manim_grid.grid import Cell
-
-        if isinstance(subarray, Cell):
-            return cast(GValT, getattr(subarray, self._attr))
-
-        return [getattr(cell, self._attr) for cell in subarray.flat]
+        ...
 
 
-class WriteableProxy(Generic[SScalarIdxT, SSequenceIdxT, SValT], _BaseProxy):
+class WriteableProxy(
+    Generic[SScalarIdxT, SSequenceIdxT, SScalarValT, SSequenceValT], _BaseProxy
+):
     """Mixin that implements write-only indexing for a proxy.
 
     Sub-classes must implement the abstract method ``_postprocess_set`` which receives
@@ -267,17 +272,19 @@ class WriteableProxy(Generic[SScalarIdxT, SSequenceIdxT, SValT], _BaseProxy):
     """
 
     @overload
-    def __setitem__(self, index: ScalarIndex | SScalarIdxT, value: SValT) -> None: ...
+    def __setitem__(
+        self, index: ScalarIndex | SScalarIdxT, value: SScalarValT
+    ) -> None: ...
 
     @overload
     def __setitem__(
-        self, index: SequenceIndex | SSequenceIdxT, value: Sequence[SValT]
+        self, index: SequenceIndex | SSequenceIdxT, value: SSequenceValT
     ) -> None: ...
 
     def __setitem__(
         self,
         index: ScalarIndex | SScalarIdxT | SequenceIndex | SSequenceIdxT,
-        value: SValT | Sequence[SValT],
+        value: SScalarValT | SSequenceValT,
     ) -> None:
         """Assign *value* to the cell(s) addressed by *index*.
 
@@ -294,9 +301,8 @@ class WriteableProxy(Generic[SScalarIdxT, SSequenceIdxT, SValT], _BaseProxy):
             It may be an index specification understood by :class:`LabelMapper` or a
             custom index type described by ``SScalarIdxT`` and ``SSequenceIdxT``.
         value
-            Value(s) to store. For a scalar cell a single value is required;
-            for multiple cells, a sequence whose length matches the number of selected
-            cells must be supplied.
+            Value(s) to store. For a scalar cell a ``SScalarValT`` value is required;
+            for multiple cells, a ``SSequenceValT`` value must be supplied.
         """
         idx, value, kwargs = self._preprocess_set(index, value)
         np_index = self._grid._label_mapper.map_index(idx)
@@ -307,8 +313,10 @@ class WriteableProxy(Generic[SScalarIdxT, SSequenceIdxT, SValT], _BaseProxy):
     def _preprocess_set(
         self,
         index: ScalarIndex | SScalarIdxT | SequenceIndex | SSequenceIdxT,
-        value: SValT | Sequence[SValT],
-    ) -> tuple[ScalarIndex | SequenceIndex, SValT | Sequence[SValT], dict[str, Any]]:
+        value: SScalarValT | SSequenceValT,
+    ) -> tuple[
+        ScalarIndex | SequenceIndex, SScalarValT | SSequenceValT, dict[str, Any]
+    ]:
         """Normalize *index* and *value* before they reach the grid.
 
         The default implementation simply validates that *index* is a scalar or sequence
@@ -341,7 +349,7 @@ class WriteableProxy(Generic[SScalarIdxT, SSequenceIdxT, SValT], _BaseProxy):
     def _postprocess_set(
         self,
         subarray: "Cell | np.ndarray",
-        value: SValT | Sequence[SValT],
+        value: SScalarValT | SSequenceValT,
         **kwargs: Any,
     ) -> None:
         """Perform the actual mutation of the selected cell(s).

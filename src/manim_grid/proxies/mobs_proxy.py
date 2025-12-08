@@ -29,8 +29,10 @@ if TYPE_CHECKING:
 
 
 class MobsProxy(
-    ReadableProxy[Never, Never, m.Mobject],
-    WriteableProxy[AlignedScalarIndex, AlignedSequenceIndex, m.Mobject],
+    ReadableProxy[Never, Never, m.Mobject, list[m.Mobject]],
+    WriteableProxy[
+        AlignedScalarIndex, AlignedSequenceIndex, m.Mobject, Sequence[m.Mobject]
+    ],
 ):
     """Proxy that provides read-write access to the ``mob`` attribute of each cell.
 
@@ -67,6 +69,17 @@ class MobsProxy(
     ) -> None:
         super().__init__(grid, attr)
         self._margin = margin
+
+    def _postprocess_get(
+        self, subarray: "Cell | np.ndarray", **_: Any
+    ) -> m.Mobject | list[m.Mobject]:
+        """Return a single Mobject in the scalar case or a list of Mobjects."""
+        from manim_grid.grid import Cell
+
+        if isinstance(subarray, Cell):
+            return cast(m.Mobject, getattr(subarray, self._attr))
+
+        return [getattr(cell, self._attr) for cell in subarray.flat]
 
     def _preprocess_set(
         self,
