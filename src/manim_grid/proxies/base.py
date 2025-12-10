@@ -12,11 +12,11 @@ from typing import (
 import numpy as np
 
 from manim_grid.typing import (
+    BulkIndex,
     MaskArrayIndex,
     ScalarIndex,
-    SequenceIndex,
+    is_bulk_index,
     is_scalar_index,
-    is_sequence_index,
 )
 
 if TYPE_CHECKING:
@@ -26,34 +26,34 @@ if TYPE_CHECKING:
 These TypeVars describe the **additional** allowed indexes types for getting and
 setting through proxies, as well as the value types for each proxy.
 The indexing forms common to all proxies are already described in ``GScalarIndex`` and
-``GSequenceIndex`` defined in :mod:`typing`.
+``GBulkIndex`` defined in :mod:`typing`.
 For instance, :class:`MobsProxy` supports the 'Aligned' variants for indexing (also
 defined in :mod:`typing.py`), and gets and sets :class:`manim.Mobject` instances
-through :method:`_Proxy.__getitem__` and :method:`_Proxy.__setitem__`.
+as scalar values and ``list[manim.Mobject]`` as bulk values.
 """
 GScalarIdxT = TypeVar("GScalarIdxT")
 """Describe an additional scalar index form for ``__getitem``."""
 
-GSequenceIdxT = TypeVar("GSequenceIdxT")
-"""Describe an additional sequence index form for ``__getitem``."""
+GBulkIdxT = TypeVar("GBulkIdxT")
+"""Describe an additional bulk index form for ``__getitem``."""
 
 GScalarValT = TypeVar("GScalarValT")
 """Describe the scalar value type returned by ``__getitem__``."""
 
-GSequenceValT = TypeVar("GSequenceValT")
-"""Describe the sequence value type returned by ``__getitem__``."""
+GBulkValT = TypeVar("GBulkValT")
+"""Describe the bulk value type returned by ``__getitem__``."""
 
 SScalarIdxT = TypeVar("SScalarIdxT")
 """Describe an additional scalar index form for ``__setitem``."""
 
-SSequenceIdxT = TypeVar("SSequenceIdxT")
-"""Describe an additional sequence index form for ``__setitem``."""
+SBulkIdxT = TypeVar("SBulkIdxT")
+"""Describe an additional bulk index form for ``__setitem``."""
 
 SScalarValT = TypeVar("SScalarValT")
 """Describe the scalar value type set through ``__setitem__``."""
 
-SSequenceValT = TypeVar("SSequenceValT")
-"""Describe the sequence value type set through ``__setitem__``."""
+SBulkValT = TypeVar("SBulkValT")
+"""Describe the bulk value type set through ``__setitem__``."""
 
 MISSING = object()
 """A sentinel value for missing attributes."""
@@ -96,7 +96,7 @@ class _BaseProxy:
         return f"<{type(self).__name__} of size {self._grid._cells.shape}>"
 
     def mask(
-        self, *, predicate: Callable[[Any], bool] | None = None, **kwargs: Any
+        self, *, predicate: Callable[[object], bool] | None = None, **kwargs: Any
     ) -> MaskArrayIndex:
         """Return a boolean ndarray with the same shape as the Cell matrix.
 
@@ -135,14 +135,14 @@ class _BaseProxy:
 
 
 class ReadableProxy(
-    Generic[GScalarIdxT, GSequenceIdxT, GScalarValT, GSequenceValT], _BaseProxy
+    Generic[GScalarIdxT, GBulkIdxT, GScalarValT, GBulkValT], _BaseProxy
 ):
     """Mixin that implements read-only indexing for a proxy.
 
-    Sub-classes inherit ``__getitem__`` and the default implementations of
-    ``_preprocess_get`` and ``_postprocess_get``. The generic type variables convey
-    the relationship between any additional index type and the value type that the
-    proxy returns.
+    Sub-classes inherit and can extend ``__getitem__`` and the default implementation of
+    ``_preprocess_get``; they should also implement ``_postprocess_get``.
+    The generic type variables convey the relationship between any additional index type
+    and the value type that the proxy returns.
 
     Parameters
     ----------
@@ -160,11 +160,11 @@ class ReadableProxy(
     def __getitem__(self, index: ScalarIndex | GScalarIdxT) -> GScalarValT: ...
 
     @overload
-    def __getitem__(self, index: SequenceIndex | GSequenceIdxT) -> GSequenceValT: ...
+    def __getitem__(self, index: BulkIndex | GBulkIdxT) -> GBulkValT: ...
 
     def __getitem__(
-        self, index: ScalarIndex | GScalarIdxT | SequenceIndex | GSequenceIdxT
-    ) -> GScalarValT | GSequenceValT:
+        self, index: ScalarIndex | GScalarIdxT | BulkIndex | GBulkIdxT
+    ) -> GScalarValT | GBulkValT:
         """Retrieve the attribute value(s) for *index*.
 
         This method performs three steps:
@@ -179,13 +179,13 @@ class ReadableProxy(
         ----------
         index
             It may be an index specification understood by :class:`LabelMapper` or a
-            custom index type described by ``GScalarIdxT`` and ``GSequenceIdxT``.
+            custom index type described by ``GScalarIdxT`` and ``GBulkIdxT``.
 
         Returns
         -------
-        GScalarValT | GSequenceValT
+        GScalarValT | GBulkValT
             GScalarValT if the indexed selection resolves to one Cell, otherwise
-            GSequenceValT.
+            GBulkValT.
         """
         idx, kwargs = self._preprocess_get(index)
         np_index = self._grid._label_mapper.map_index(idx)
@@ -195,8 +195,8 @@ class ReadableProxy(
 
     def _preprocess_get(
         self,
-        index: ScalarIndex | GScalarIdxT | SequenceIndex | GSequenceIdxT,
-    ) -> tuple[ScalarIndex | SequenceIndex, dict[str, Any]]:
+        index: ScalarIndex | GScalarIdxT | BulkIndex | GBulkIdxT,
+    ) -> tuple[ScalarIndex | BulkIndex, dict[str, Any]]:
         """Validate and transform *index* before it reaches the label mapper.
 
         The default implementation simply returns ``(index, {})`` after asserting that
@@ -217,17 +217,17 @@ class ReadableProxy(
         Raises
         ------
         AssertionError
-            If ``index`` is neither a scalar nor a sequence index according to
+            If ``index`` is neither a scalar nor a bulk index according to
             :func:`manim_grid.typing.is_scalar_index` /
-            :func:`manim_grid.typing.is_sequence_index`.
+            :func:`manim_grid.typing.is_bulk_index`.
         """
-        assert is_scalar_index(index) or is_sequence_index(index)
+        assert is_scalar_index(index) or is_bulk_index(index)
         return index, {}
 
     @abstractmethod
     def _postprocess_get(
         self, subarray: "Cell | np.ndarray", **kwargs: Any
-    ) -> GScalarValT | GSequenceValT:
+    ) -> GScalarValT | GBulkValT:
         """Convert the raw ``subarray`` into the expected return type.
 
         Parameters
@@ -241,19 +241,19 @@ class ReadableProxy(
 
         Returns
         -------
-        GScalarValT | GSequenceValT
-            Dependending on the indexed selection contained in ``subarray``.
+        GScalarValT | GBulkValT
+            Depending on the indexed selection contained in ``subarray``.
         """
         ...
 
 
 class WriteableProxy(
-    Generic[SScalarIdxT, SSequenceIdxT, SScalarValT, SSequenceValT], _BaseProxy
+    Generic[SScalarIdxT, SBulkIdxT, SScalarValT, SBulkValT], _BaseProxy
 ):
     """Mixin that implements write-only indexing for a proxy.
 
     Sub-classes must implement the abstract method ``_postprocess_set`` which receives
-    the selected ``Cell`` objects (or an ``ndarray`` of them) and the user supplied
+    the selected ``Cell`` object (or an ``ndarray`` of them) and the user supplied
     value(s), and they may override ``_preprocess_set`` to customize the handling of
     custom index forms.
     The generic type variables describe the relationship between the additional index
@@ -277,14 +277,12 @@ class WriteableProxy(
     ) -> None: ...
 
     @overload
-    def __setitem__(
-        self, index: SequenceIndex | SSequenceIdxT, value: SSequenceValT
-    ) -> None: ...
+    def __setitem__(self, index: BulkIndex | SBulkIdxT, value: SBulkValT) -> None: ...
 
     def __setitem__(
         self,
-        index: ScalarIndex | SScalarIdxT | SequenceIndex | SSequenceIdxT,
-        value: SScalarValT | SSequenceValT,
+        index: ScalarIndex | SScalarIdxT | BulkIndex | SBulkIdxT,
+        value: SScalarValT | SBulkValT,
     ) -> None:
         """Assign *value* to the cell(s) addressed by *index*.
 
@@ -299,10 +297,10 @@ class WriteableProxy(
         ----------
         index
             It may be an index specification understood by :class:`LabelMapper` or a
-            custom index type described by ``SScalarIdxT`` and ``SSequenceIdxT``.
+            custom index type described by ``SScalarIdxT`` and ``SBulkIdxT``.
         value
             Value(s) to store. For a scalar cell a ``SScalarValT`` value is required;
-            for multiple cells, a ``SSequenceValT`` value must be supplied.
+            for multiple cells, a ``SBulkValT`` value must be supplied.
         """
         idx, value, kwargs = self._preprocess_set(index, value)
         np_index = self._grid._label_mapper.map_index(idx)
@@ -312,14 +310,12 @@ class WriteableProxy(
 
     def _preprocess_set(
         self,
-        index: ScalarIndex | SScalarIdxT | SequenceIndex | SSequenceIdxT,
-        value: SScalarValT | SSequenceValT,
-    ) -> tuple[
-        ScalarIndex | SequenceIndex, SScalarValT | SSequenceValT, dict[str, Any]
-    ]:
+        index: ScalarIndex | SScalarIdxT | BulkIndex | SBulkIdxT,
+        value: SScalarValT | SBulkValT,
+    ) -> tuple[ScalarIndex | BulkIndex, SScalarValT | SBulkValT, dict[str, Any]]:
         """Normalize *index* and *value* before they reach the grid.
 
-        The default implementation simply validates that *index* is a scalar or sequence
+        The default implementation simply validates that *index* is a scalar or bulk
         index and returns ``(index, value, {})``. Concrete proxies can extend this
         method to extract additional information (e.g. an alignment vector in
         MobsProxy).
@@ -340,16 +336,16 @@ class WriteableProxy(
         Raises
         ------
         AssertionError
-            If ``index`` is not a recognised scalar or sequence index.
+            If ``index`` is not a recognised scalar or bulk index.
         """
-        assert is_scalar_index(index) or is_sequence_index(index)
+        assert is_scalar_index(index) or is_bulk_index(index)
         return index, value, {}
 
     @abstractmethod
     def _postprocess_set(
         self,
         subarray: "Cell | np.ndarray",
-        value: SScalarValT | SSequenceValT,
+        value: SScalarValT | SBulkValT,
         **kwargs: Any,
     ) -> None:
         """Perform the actual mutation of the selected cell(s).

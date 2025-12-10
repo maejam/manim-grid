@@ -4,7 +4,7 @@ from typing import Any, TypeAlias, TypeGuard
 import numpy as np
 from manim.typing import Vector3DLike
 
-"""Indexing.
+"""Indexing/Assignment.
 
 A `Key` is a single allowed expression for row or column indexing
 (int, str, list, 1D-array...).
@@ -104,36 +104,51 @@ NpIndex: TypeAlias = (
 ScalarIndex: TypeAlias = tuple[SingleKey, SingleKey]
 """An index that is resolved to a scalar object."""
 
-SequenceKey: TypeAlias = ListKey | SliceKey | MaskArrayKey | IntArrayKey | StrArrayKey
-"""A key that is resolved to a sequence of objects."""
+BulkKey: TypeAlias = ListKey | SliceKey | MaskArrayKey | IntArrayKey | StrArrayKey
+"""A key that is resolved to multiple objects."""
 
-SequenceIndex: TypeAlias = (
+BulkIndex: TypeAlias = (
     SingleKey
-    | SequenceKey
-    | tuple[SingleKey, SequenceKey]
-    | tuple[SequenceKey, SingleKey]
-    | tuple[SequenceKey, SequenceKey]
+    | BulkKey
+    | tuple[SingleKey, BulkKey]
+    | tuple[BulkKey, SingleKey]
+    | tuple[BulkKey, BulkKey]
     | MaskArrayIndex
     | IntArrayIndex
     | StrArrayIndex
 )
-"""An index that is resolved to a sequence of objects."""
+"""An index that is resolved to multiple objects."""
 
 # Specialized indexes.
 AlignedScalarIndex: TypeAlias = tuple[SingleKey, SingleKey, Vector3DLike]
 """A full index with alignment resolved to a scalar object."""
 
-AlignedSequenceIndex: TypeAlias = (
+AlignedBulkIndex: TypeAlias = (
     tuple[SingleKey, Vector3DLike]
-    | tuple[SequenceKey, Vector3DLike]
-    | tuple[SingleKey, SequenceKey, Vector3DLike]
-    | tuple[SequenceKey, SingleKey, Vector3DLike]
-    | tuple[SequenceKey, SequenceKey, Vector3DLike]
+    | tuple[BulkKey, Vector3DLike]
+    | tuple[SingleKey, BulkKey, Vector3DLike]
+    | tuple[BulkKey, SingleKey, Vector3DLike]
+    | tuple[BulkKey, BulkKey, Vector3DLike]
     | tuple[MaskArrayIndex, Vector3DLike]
     | tuple[IntArrayIndex, Vector3DLike]
     | tuple[StrArrayIndex, Vector3DLike]
 )
-"""A full index with alignment resolved to a sequence of objects."""
+"""A full index with alignment resolved to multiple objects."""
+
+TagScalarIndex: TypeAlias = tuple[SingleKey, SingleKey, str]
+"""A full index with a string tag key resolved to a scalar object."""
+
+TagBulkIndex: TypeAlias = (
+    tuple[SingleKey, str]
+    | tuple[BulkKey, str]
+    | tuple[SingleKey, BulkKey, str]
+    | tuple[BulkKey, SingleKey, str]
+    | tuple[BulkKey, BulkKey, str]
+    | tuple[MaskArrayIndex, str]
+    | tuple[IntArrayIndex, str]
+    | tuple[StrArrayIndex, str]
+)
+"""A full index with a string tag key resolved to multiple objects."""
 
 
 # TypeGuards.
@@ -160,8 +175,8 @@ def _is_valid_dtype(arr: np.ndarray) -> bool:
     )
 
 
-def is_sequence_key(index: Any) -> TypeGuard[SequenceKey]:
-    """Return ``True`` iff ``index`` is compatible with ``SequenceKey``."""
+def is_bulk_key(index: Any) -> TypeGuard[BulkKey]:
+    """Return ``True`` iff ``index`` is compatible with ``BulkKey``."""
     listk = isinstance(index, list) and all(is_single_key(k) for k in index)
     slicek = (
         isinstance(index, slice)
@@ -175,18 +190,18 @@ def is_sequence_key(index: Any) -> TypeGuard[SequenceKey]:
     return listk or slicek or arrayk
 
 
-def is_sequence_index(index: Any) -> TypeGuard[SequenceIndex]:
-    """Return ``True`` iff ``index`` is compatible with ``SequenceIndex``."""
+def is_bulk_index(index: Any) -> TypeGuard[BulkIndex]:
+    """Return ``True`` iff ``index`` is compatible with ``BulkIndex``."""
     tup_idx = (
         isinstance(index, tuple)
         and len(index) == 2
-        and all((is_single_key(k) or is_sequence_key(k)) for k in index)
+        and all((is_single_key(k) or is_bulk_key(k)) for k in index)
         and not all(is_single_key(k) for k in index)
     )
     array_idx = (
         isinstance(index, np.ndarray) and index.ndim == 2 and _is_valid_dtype(index)
     )
-    return is_single_key(index) or is_sequence_key(index) or tup_idx or array_idx
+    return is_single_key(index) or is_bulk_key(index) or tup_idx or array_idx
 
 
 def is_1d_str_key(key: Any) -> TypeGuard[StrArrayKey]:

@@ -13,12 +13,12 @@ from manim.typing import Vector3D
 
 from manim_grid.exceptions import GridValueError
 from manim_grid.typing import (
+    AlignedBulkIndex,
     AlignedScalarIndex,
-    AlignedSequenceIndex,
+    BulkIndex,
     ScalarIndex,
-    SequenceIndex,
+    is_bulk_index,
     is_scalar_index,
-    is_sequence_index,
     is_vector_3d_like,
 )
 
@@ -31,27 +31,27 @@ if TYPE_CHECKING:
 class MobsProxy(
     ReadableProxy[Never, Never, m.Mobject, list[m.Mobject]],
     WriteableProxy[
-        AlignedScalarIndex, AlignedSequenceIndex, m.Mobject, Sequence[m.Mobject]
+        AlignedScalarIndex, AlignedBulkIndex, m.Mobject, Sequence[m.Mobject]
     ],
 ):
     """Proxy that provides read-write access to the ``mob`` attribute of each cell.
 
-    The proxy supports two calling conventions:
+    The proxy supports the following calling conventions:
 
-    1. **Scalar assignment** – ``grid.mobs[row, col] = mob``
-       The index may optionally be a tuple ``(row, col, alignment_vector)``;
-       the alignment vector is passed to :meth:`Cell.insert_mob`.
-
-    2. **Bulk assignment** – ``grid.mobs[row_slice, col_slice] = [mob1, mob2, …]``
-       or ``grid.mobs[row_slice, col_slice, alignment_vector]``.
-       The length of the supplied list must match the number of selected cells.
+    1. ``grid.mobs[index]`` for scalar or bulk indexing.
+    2. ``grid.mobs[row, col, Vector3D] = mob`` for a scalar assignment. The alignment
+       vector can be omitted and will default to ``manim.ORIGIN``.
+    3. ``grid.mobs[index, Vector3D] = [mob1, mob2, ...]`` for a bulk assignment.
+       The number of values provided must equal the number of Cells selected by *index*.
+       The alignment vector can be omitted and will default to ``manim.ORIGIN``. The
+       same alignment is applied to all assigned mobjects.
 
     Parameters
     ----------
     grid
         Parent grid that owns the underlying ``_cells`` matrix.
     attr
-        Must be ``"mob"`` – the attribute name on ``Cell`` that stores the
+        Must be ``"mob"`` - the attribute name on ``Cell`` that stores the
         current :class:`manim.mobject.mobject.Mobject`.
     margin
         Margin vector used by :meth:`Cell.insert_mob` to offset the inserted mobject.
@@ -83,10 +83,10 @@ class MobsProxy(
 
     def _preprocess_set(
         self,
-        index: ScalarIndex | AlignedScalarIndex | SequenceIndex | AlignedSequenceIndex,
+        index: ScalarIndex | AlignedScalarIndex | BulkIndex | AlignedBulkIndex,
         value: m.Mobject | Sequence[m.Mobject],
     ) -> tuple[
-        ScalarIndex | SequenceIndex, m.Mobject | Sequence[m.Mobject], dict[str, Any]
+        ScalarIndex | BulkIndex, m.Mobject | Sequence[m.Mobject], dict[str, Any]
     ]:
         """Separate the optional alignment vector from the index.
 
@@ -112,11 +112,11 @@ class MobsProxy(
         """
         if isinstance(index, tuple) and is_vector_3d_like(index[-1]):
             alignment = np.array(index[-1], dtype=np.float64)
-            idx = cast(ScalarIndex | SequenceIndex, index[:-1])
+            idx = cast(ScalarIndex | BulkIndex, index[:-1])
         else:
             alignment = m.ORIGIN
-            idx = cast(ScalarIndex | SequenceIndex, index)
-        assert is_scalar_index(idx) or is_sequence_index(idx)
+            idx = cast(ScalarIndex | BulkIndex, index)
+        assert is_scalar_index(idx) or is_bulk_index(idx)
         return idx, value, {"alignment": alignment}
 
     def _postprocess_set(

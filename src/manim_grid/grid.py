@@ -12,7 +12,11 @@ from manim_grid.proxies.olds_proxy import OldsProxy
 
 
 class EmptyMobject(m.Mobject):
-    """An empty mobject to serve as placeholder in empty cells."""
+    """Serve as a placeholder mobject in empty cells."""
+
+
+class Tags:
+    """Store user-defined tags as attributes."""
 
 
 @dataclass
@@ -30,20 +34,20 @@ class Cell:
         The *previous* object that occupied the cell. It is useful for transition
         effects (FadeOut, Transform, etc.). Also initialised with an ``EmptyMobject``.
     tags
-        An dictionary for user-defined metadata. The core library does not interpret
+        An class instance for user-defined metadata. The core library does not interpret
         this data; it is merely attached to the cell as a user convenience.
     """
 
     rect: m.Rectangle
     mob: m.Mobject = field(default_factory=EmptyMobject)
     old: m.Mobject = field(default_factory=EmptyMobject)
-    tags: dict[str, Any] = field(default_factory=dict)
+    tags: Tags = field(default_factory=Tags)
 
     def insert_mob(
         self,
         mob: m.Mobject,
         alignment: Vector3D,
-        margin: np.ndarray[tuple[Literal[3]], np.dtype[np.float64]],
+        margin: np.ndarray[tuple[int], np.dtype[np.float64]],
     ) -> None:
         """Insert a new mobject in the cell.
 
@@ -88,8 +92,8 @@ class Grid(m.Mobject):
 
         * creating the underlying ``np.ndarray`` of ``Cell`` instances,
         * arranging the rectangle placeholders in a Manim ``VGroup``,
-        * exposing convenient proxy objects (``mobs``, ``olds``) that forward attribute
-          access to the underlying cells.
+        * exposing convenient proxy objects (``mobs``, ``olds``, ...) that forward
+          attribute access to the underlying cells.
 
         Parameters
         ----------
@@ -124,7 +128,7 @@ class Grid(m.Mobject):
             read and write operations through ``__getitem__`` and ``__setitem__``.
         olds
             A proxy giving access to the ``old`` attribute of each cell. Supports
-            read-only operation through.
+            read-only operation through ``__getitem__``.
         """
         super().__init__(**kwargs)
 
@@ -164,7 +168,9 @@ class Grid(m.Mobject):
             if not all(isinstance(b, (int, float)) for b in buff):
                 raise TypeError("Grid buffer should be a numeric value.")
             return (float(buff[0]), float(buff[1]))
-        raise TypeError("Grid buffer should be a numeric value.")
+        raise TypeError(
+            "Grid buffer should be a numeric value or a 2-tuple of numeric values."
+        )
 
     @staticmethod
     def _normalize_margin(
@@ -189,7 +195,9 @@ class Grid(m.Mobject):
             if not all(isinstance(m, (int, float)) for m in margin):
                 raise TypeError("Grid margin should be a numeric value.")
             return np.array([margin[0], margin[1], 0.0], dtype=np.float64)
-        raise TypeError("Grid margin should be a numeric value.")
+        raise TypeError(
+            "Grid margin should be a numeric value or a 2-tuple of numeric values."
+        )
 
     @staticmethod
     def _prepare_labels(labels: Sequence[str], num: int) -> dict[str, int]:

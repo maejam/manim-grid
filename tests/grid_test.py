@@ -2,22 +2,22 @@ import manim as m
 import numpy as np
 import pytest
 
-from manim_grid.grid import Cell, Grid
+from manim_grid.grid import Cell, EmptyMobject, Grid, Tags
 
 
 # ----------------------------------------------------------------------
 # Cell
 # ----------------------------------------------------------------------
-def test_cell_initial_state(dummy_mob):
-    cell = Cell(dummy_mob)
+def test_cell_initial_state():
+    cell = Cell(rect=m.Rectangle())
 
-    assert isinstance(cell.mob, m.Mobject)
-    assert isinstance(cell.old, m.Mobject)
-    assert cell.tags == {}
+    assert isinstance(cell.mob, EmptyMobject)
+    assert isinstance(cell.old, EmptyMobject)
+    assert isinstance(cell.tags, Tags)
 
 
 def test_cell_insert_mob_updates_old_and_mob(dummy_mob):
-    cell = Cell(rect=dummy_mob)
+    cell = Cell(rect=m.Rectangle())
     default = cell.mob
 
     first = dummy_mob.copy()
@@ -125,7 +125,7 @@ def test_normalize_buff_from_tuple(buff):
     ],
 )
 def test_normalize_buff_invalid_input(buff):
-    with pytest.raises(TypeError, match="Grid buffer should be a numeric value."):
+    with pytest.raises(TypeError, match="Grid buffer should be a numeric value"):
         Grid._normalize_buff(buff)
 
 
@@ -179,51 +179,5 @@ def test_normalize_margin_from_tuple(margin):
     ],
 )
 def test_normalize_margin_invalid_input(margin):
-    with pytest.raises(TypeError, match="Grid margin should be a numeric value."):
+    with pytest.raises(TypeError, match="Grid margin should be a numeric value"):
         Grid._normalize_margin(margin)
-
-
-# # ----------------------------------------------------------------------
-# # Optional – demonstrate the mask helper (the part you liked)
-# # ----------------------------------------------------------------------
-# def test_mask_helper_filters_by_attribute(simple_grid):
-#     """The ``mask`` method must produce a boolean array that matches the query."""
-#     red = DummyMobject()
-#     blue = DummyMobject()
-#     # Give the dummy objects a ``color`` attribute so the mask can inspect it
-#     red.color = "RED"
-#     blue.color = "BLUE"
-#
-#     # Populate the grid: first row red, second row blue
-#     simple_grid.mobs[0, :] = [red, red, red]
-#     simple_grid.mobs[1, :] = [blue, blue, blue]
-#
-#     # Mask for blue objects
-#     blue_mask = simple_grid.mobs.mask(color="BLUE")
-#     assert isinstance(blue_mask, np.ndarray)
-#     assert blue_mask.shape == (2, 3)
-#
-#     # Expected pattern: first row False, second row True
-#     expected = np.array([[False, False, False], [True, True, True]])
-#     np.testing.assert_array_equal(blue_mask, expected)
-#
-#     # Using the mask to retrieve the objects should give us the three blues
-#     blues = simple_grid.mobs[blue_mask]
-#     assert blues == [blue, blue, blue]
-#
-#
-# def test_mask_with_predicate(simple_grid):
-#     """A callable predicate must also work."""
-#     a = DummyMobject()
-#     b = DummyMobject()
-#     a.opacity = 0.2
-#     b.opacity = 0.8
-#
-#     simple_grid.mobs[0, 0] = a
-#     simple_grid.mobs[0, 1] = b
-#
-#     # Predicate selects objects with opacity > 0.5
-#     mask = simple_grid.mobs.mask(predicate=lambda m: getattr(m, "opacity", 0) > 0.5)
-#     assert mask.shape == (2, 3)  # whole grid shape
-#     assert mask[0, 1] is True
-#     assert mask[0, 0] is False
