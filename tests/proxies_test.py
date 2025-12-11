@@ -73,7 +73,7 @@ def test_mask_combines_predicate_and_keywords(simple_grid, mobjects):
 
 def test_mask_raises_when_no_filter_given(simple_grid):
     with pytest.raises(
-        ValueError, match="Provide a predicate or at least one keyword filter"
+        ValueError, match="You must provide a predicate or at least one keyword filter"
     ):
         simple_grid.mobs.mask()
 

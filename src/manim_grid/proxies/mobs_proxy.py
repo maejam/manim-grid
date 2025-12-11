@@ -3,8 +3,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Literal,
-    Never,
     cast,
+    overload,
 )
 
 import manim as m
@@ -28,15 +28,10 @@ if TYPE_CHECKING:
     from manim_grid.grid import Cell, Grid
 
 
-class MobsProxy(
-    ReadableProxy[Never, Never, m.Mobject, list[m.Mobject]],
-    WriteableProxy[
-        AlignedScalarIndex, AlignedBulkIndex, m.Mobject, Sequence[m.Mobject]
-    ],
-):
+class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
     """Proxy that provides read-write access to the ``mob`` attribute of each cell.
 
-    The proxy supports the following calling conventions:
+    This proxy supports the following calling conventions:
 
     1. ``grid.mobs[index]`` for scalar or bulk indexing.
     2. ``grid.mobs[row, col, Vector3D] = mob`` for a scalar assignment. The alignment
@@ -50,9 +45,6 @@ class MobsProxy(
     ----------
     grid
         Parent grid that owns the underlying ``_cells`` matrix.
-    attr
-        Must be ``"mob"`` - the attribute name on ``Cell`` that stores the
-        current :class:`manim.mobject.mobject.Mobject`.
     margin
         Margin vector used by :meth:`Cell.insert_mob` to offset the inserted mobject.
 
@@ -61,14 +53,26 @@ class MobsProxy(
     OldsProxy : read-only proxy exposing the previous ``mob`` value.
     """
 
+    _attr: str = "mob"
+
     def __init__(
         self,
         grid: "Grid",
-        attr: Literal["mob"],
         margin: np.ndarray[tuple[Literal[3]], np.dtype[np.float64]],
     ) -> None:
-        super().__init__(grid, attr)
+        super().__init__(grid)
         self._margin = margin
+
+    @overload
+    def __getitem__(self, index: ScalarIndex) -> m.Mobject: ...
+
+    @overload
+    def __getitem__(self, index: BulkIndex) -> list[m.Mobject]: ...
+
+    def __getitem__(
+        self, index: ScalarIndex | BulkIndex
+    ) -> m.Mobject | list[m.Mobject]:
+        return cast(m.Mobject | list[m.Mobject], super().__getitem__(index))
 
     def _postprocess_get(
         self, subarray: "Cell | np.ndarray", **_: Any
@@ -80,6 +84,23 @@ class MobsProxy(
             return cast(m.Mobject, getattr(subarray, self._attr))
 
         return [getattr(cell, self._attr) for cell in subarray.flat]
+
+    @overload
+    def __setitem__(
+        self, index: ScalarIndex | AlignedScalarIndex, value: m.Mobject
+    ) -> None: ...
+
+    @overload
+    def __setitem__(
+        self, index: BulkIndex | AlignedBulkIndex, value: Sequence[m.Mobject]
+    ) -> None: ...
+
+    def __setitem__(
+        self,
+        index: ScalarIndex | AlignedScalarIndex | BulkIndex | AlignedBulkIndex,
+        value: m.Mobject | Sequence[m.Mobject],
+    ) -> None:
+        super().__setitem__(index, value)
 
     def _preprocess_set(
         self,

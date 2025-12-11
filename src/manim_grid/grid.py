@@ -145,8 +145,8 @@ class Grid(m.Mobject):
         )
         self.add(self.grid)
 
-        self.mobs = MobsProxy(self, "mob", margin=self._margin)
-        self.olds = OldsProxy(self, "old")
+        self.mobs = MobsProxy(self, margin=self._margin)
+        self.olds = OldsProxy(self)
 
     @staticmethod
     def _normalize_buff(buff: float | tuple[float, float]) -> tuple[float, float]:
