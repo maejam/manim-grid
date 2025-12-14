@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -68,6 +68,10 @@ class _BaseProxy(Generic[T]):
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} of size {self._grid._cells.shape}>"
+
+    def __iter__(self) -> Generator[T]:
+        for cell in self._grid._cells.flat:
+            yield getattr(cell, self._attr)
 
     def mask(
         self, *, predicate: Callable[[T], bool] | None = None, **kwargs: Any
