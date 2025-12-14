@@ -9,14 +9,11 @@ from manim.typing import Vector3D
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
+from manim_grid.proxies.tags_proxy import Tags, TagsProxy
 
 
 class EmptyMobject(m.Mobject):
     """Serve as a placeholder mobject in empty cells."""
-
-
-class Tags:
-    """Store user-defined tags as attributes."""
 
 
 @dataclass
@@ -147,6 +144,7 @@ class Grid(m.Mobject):
 
         self.mobs = MobsProxy(self, margin=self._margin)
         self.olds = OldsProxy(self)
+        self.tags = TagsProxy(self)
 
     @staticmethod
     def _normalize_buff(buff: float | tuple[float, float]) -> tuple[float, float]:

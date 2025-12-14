@@ -22,8 +22,17 @@ if TYPE_CHECKING:
     from manim_grid.grid import Cell, Grid
 
 
-MISSING = object()
-"""A sentinel value for missing attributes."""
+class _MissingSentinel:
+    """Sentinel object used to signal a missing object."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "<MISSING>"
+
+
+MISSING = _MissingSentinel()
+
 
 T = TypeVar("T")
 """The value type held by a given proxy."""
@@ -32,7 +41,7 @@ T = TypeVar("T")
 class _BaseProxy(Generic[T]):
     """Base class for all proxy objects.
 
-    A proxy is a thin façade that forwards attribute access to the underlying
+    A proxy is a façade that forwards attribute access to the underlying
     :class:`~manim_grid.grid.Cell` objects stored inside a
     :class:`~manim_grid.grid.Grid`. Concrete proxies specialize the behaviour for
     reading, writing, or both.

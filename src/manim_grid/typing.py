@@ -135,21 +135,6 @@ AlignedBulkIndex: TypeAlias = (
 )
 """A full index with alignment resolved to multiple objects."""
 
-TagScalarIndex: TypeAlias = tuple[SingleKey, SingleKey, str]
-"""A full index with a string tag key resolved to a scalar object."""
-
-TagBulkIndex: TypeAlias = (
-    tuple[SingleKey, str]
-    | tuple[BulkKey, str]
-    | tuple[SingleKey, BulkKey, str]
-    | tuple[BulkKey, SingleKey, str]
-    | tuple[BulkKey, BulkKey, str]
-    | tuple[MaskArrayIndex, str]
-    | tuple[IntArrayIndex, str]
-    | tuple[StrArrayIndex, str]
-)
-"""A full index with a string tag key resolved to multiple objects."""
-
 
 # TypeGuards.
 def is_single_key(index: Any) -> TypeGuard[SingleKey]:
