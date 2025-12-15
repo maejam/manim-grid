@@ -12,7 +12,7 @@ from manim_grid.proxies.olds_proxy import OldsProxy
 from manim_grid.proxies.tags_proxy import Tags, TagsProxy
 
 
-class EmptyMobject(m.Mobject):
+class EmptyMobject(m.VMobject):
     """Serve as a placeholder mobject in empty cells."""
 
 

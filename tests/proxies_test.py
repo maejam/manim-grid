@@ -125,8 +125,10 @@ def test_bulk_assignment_with_sequence(simple_grid):
     objs = [m.Circle() for _ in range(6)]
     simple_grid.mobs[:] = objs
 
-    assert simple_grid.mobs[:] == objs
-    assert simple_grid.olds[:] == olds
+    assert isinstance(simple_grid.mobs[:], m.VGroup)
+    assert isinstance(simple_grid.olds[:], m.VGroup)
+    assert list(simple_grid.mobs[:]) == objs
+    assert list(simple_grid.olds[:]) == list(olds)
 
 
 def test_error_when_assigning_non_mobject(simple_grid):
@@ -172,13 +174,13 @@ def test_bulk_old_values_after_multiple_updates(simple_grid):
     # New objects for the first row
     new_row = [m.Circle(), m.Triangle(), m.Square()]
     simple_grid.mobs[0, :] = new_row
-    assert simple_grid.mobs[0, :] == new_row
-    assert simple_grid.olds[0, :] == objs
+    assert list(simple_grid.mobs[0, :]) == list(new_row)
+    assert list(simple_grid.olds[0, :]) == list(objs)
 
     newer_row = [m.Dot(), m.Line(), m.Dot()]
     simple_grid.mobs[0, :] = newer_row
-    assert simple_grid.mobs[0, :] == newer_row
-    assert simple_grid.olds[0, :] == new_row
+    assert list(simple_grid.mobs[0, :]) == list(newer_row)
+    assert list(simple_grid.olds[0, :]) == list(new_row)
 
 
 def test_olds_proxy_is_readonly(simple_grid):
@@ -342,10 +344,10 @@ def test_tags_proxy_mask(simple_grid: Grid):
     simple_grid.mobs[1] = [mob4, mob5, mob6]
     simple_grid.tags[0] = {"foo": "bar", "baz": 42}
     mask = simple_grid.tags.mask(predicate=lambda d: "foo" in d, baz=42)
-    assert simple_grid.mobs[mask] == [mob1, mob2, mob3]
+    assert list(simple_grid.mobs[mask]) == [mob1, mob2, mob3]
 
     mask2 = simple_grid.tags.mask(baz=MISSING)
-    assert simple_grid.mobs[mask2] == [mob4, mob5, mob6]
+    assert list(simple_grid.mobs[mask2]) == [mob4, mob5, mob6]
 
 
 def test_bulk_tags_selection_str(simple_grid: Grid):

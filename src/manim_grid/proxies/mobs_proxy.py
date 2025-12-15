@@ -67,23 +67,23 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
     def __getitem__(self, index: ScalarIndex) -> m.Mobject: ...
 
     @overload
-    def __getitem__(self, index: BulkIndex) -> list[m.Mobject]: ...
+    def __getitem__(self, index: BulkIndex) -> m.VGroup: ...
 
     def __getitem__(
         self, index: ScalarIndex | BulkIndex
     ) -> m.Mobject | list[m.Mobject]:
-        return cast(m.Mobject | list[m.Mobject], super().__getitem__(index))
+        return cast(m.Mobject | m.VGroup, super().__getitem__(index))
 
     def _postprocess_get(
         self, subarray: "Cell | np.ndarray", **_: Any
-    ) -> m.Mobject | list[m.Mobject]:
-        """Return a single Mobject in the scalar case or a list of Mobjects."""
+    ) -> m.Mobject | m.VGroup:
+        """Return a single Mobject in the scalar case or a VGroup of Mobjects."""
         from manim_grid.grid import Cell
 
         if isinstance(subarray, Cell):
             return cast(m.Mobject, getattr(subarray, self._attr))
 
-        return [getattr(cell, self._attr) for cell in subarray.flat]
+        return m.VGroup(getattr(cell, self._attr) for cell in subarray.flat)
 
     @overload
     def __setitem__(
