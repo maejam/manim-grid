@@ -1,5 +1,5 @@
+import copy
 from abc import abstractmethod
-from collections import UserDict
 from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Self, cast, overload
 
@@ -13,31 +13,53 @@ if TYPE_CHECKING:
     from manim_grid.grid import Cell
 
 
-class Tags(UserDict[str, Any]):
-    """Store user-defined tags per cell as attributes."""
+class Tags(dict[str, Any]):
+    """Store user-defined tags.
+
+    This is a dictionary subclass with dot notation attribute access and key validation.
+
+    Parameters
+    ----------
+    **tags
+        Initial key/value pair tags to store.
+    """
+
+    def __init__(self, **tags: Any) -> None:
+        for k in tags:
+            self._validate_key(k)
+        super().__init__(tags)
+
+    def _validate_key(self, key: str) -> None:
+        if key.startswith("_"):
+            raise ValueError(f"Tag keys may not start with '_' (got {key!r}.)")
+
+        if not key.isidentifier():
+            raise ValueError(f"Tag key '{key}' is not a valid Python identifier.")
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self._validate_key(key)
+        super().__setitem__(key, value)
 
     def __str__(self) -> str:
-        return str(self.data)
+        items = (f"{key!r}: {value!r}" for key, value in self.items())
+        return "{" + ", ".join(items) + "}"
 
     def __repr__(self) -> str:
-        attrs = ", ".join(f"{key}={value}" for key, value in self.data.items())
+        attrs = ", ".join(f"{key}={value}" for key, value in self.items())
         return f"Tags({attrs})"
 
     def __getattr__(self, name: str) -> Any:
         try:
-            return self.data[name]
+            return self[name]
         except KeyError as e:
             raise AttributeError(name) from e
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name in {"data"}:
-            super().__setattr__(name, value)
-        else:
-            self.data[name] = value
+        self[name] = value
 
     def __delattr__(self, name: str) -> None:
         try:
-            del self.data[name]
+            del self[name]
         except KeyError as e:
             raise AttributeError(name) from e
 
@@ -69,7 +91,7 @@ class _TagsSelectionBase:
             The selection itself to allow chaining methods and attributes calls.
         """
         for tags in iter(self):
-            tags.data.update(kwargs)
+            tags.update(kwargs)
         return self
 
     def remove(self, *keys: str) -> Self:
@@ -87,7 +109,7 @@ class _TagsSelectionBase:
         """
         for tags in iter(self):
             for key in keys:
-                tags.data.pop(key, None)
+                tags.pop(key, None)
         return self
 
     def clear(self) -> Self:
@@ -99,7 +121,7 @@ class _TagsSelectionBase:
             The selection itself to allow chaining methods and attributes calls.
         """
         for tags in iter(self):
-            tags.data.clear()
+            tags.clear()
         return self
 
     @abstractmethod
@@ -283,6 +305,6 @@ class TagsProxy(ReadableProxy[Tags], WriteableProxy[Tags]):
 
         if isinstance(subarray, np.ndarray):
             for cell in subarray.flat:
-                setattr(cell, self._attr, value.copy())
+                setattr(cell, self._attr, copy.deepcopy(value))
         else:
             setattr(subarray, self._attr, value)

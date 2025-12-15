@@ -294,6 +294,19 @@ def test_bulk_tags_selection_update(simple_grid: Grid):
     assert simple_grid.tags[0, 0].foo is MISSING
 
 
+def test_keys_are_validated_when_mutating_tags(simple_grid: Grid):
+    with pytest.raises(ValueError, match="Tag keys may not start with '_'"):
+        simple_grid.tags[1, 1]._foo = "bar"
+    with pytest.raises(ValueError, match="Tag keys may not start with '_'"):
+        simple_grid.tags[1, :]._foo = "bar"
+    with pytest.raises(ValueError, match="is not a valid Python identifier"):
+        simple_grid.tags[1, 1] = {"9foo": "bar"}
+    with pytest.raises(ValueError, match="is not a valid Python identifier"):
+        simple_grid.tags[1, :] = {"9foo": "bar"}
+    with pytest.raises(ValueError, match="is not a valid Python identifier"):
+        simple_grid.tags[1, :] = {"foo baz": "bar"}
+
+
 def test_bulk_tags_selection_remove(simple_grid: Grid):
     simple_grid.tags[1, :].update(foo="bar", baz=42)
     simple_grid.tags[1, 0:2].remove("baz")
