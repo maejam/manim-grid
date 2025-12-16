@@ -133,7 +133,9 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
         """
         if isinstance(index, tuple) and is_vector_3d_like(index[-1]):
             alignment = np.array(index[-1], dtype=np.float64)
-            idx = cast(ScalarIndex | BulkIndex, index[:-1])
+            # Unpack index if it resolves to a 1-tuple after removing alignment.
+            # Necessary to pass assertion below.
+            idx = index[:-1][0] if len(index[:-1]) == 1 else index[:-1]
         else:
             alignment = m.ORIGIN
             idx = cast(ScalarIndex | BulkIndex, index)
