@@ -2,6 +2,7 @@ import manim as m
 import numpy as np
 import pytest
 
+from manim_grid.exceptions import GridShapeError
 from manim_grid.grid import Cell, EmptyMobject, Grid, Tags
 
 
@@ -9,7 +10,7 @@ from manim_grid.grid import Cell, EmptyMobject, Grid, Tags
 # Cell
 # ----------------------------------------------------------------------
 def test_cell_initial_state():
-    cell = Cell(rect=m.Rectangle())
+    cell = Cell(Grid([], []), rect=m.Rectangle())
 
     assert isinstance(cell.mob, EmptyMobject)
     assert isinstance(cell.old, EmptyMobject)
@@ -17,7 +18,7 @@ def test_cell_initial_state():
 
 
 def test_cell_insert_mob_updates_old_and_mob(dummy_mob):
-    cell = Cell(rect=m.Rectangle())
+    cell = Cell(Grid([], []), rect=m.Rectangle())
     default = cell.mob
 
     first = dummy_mob.copy()
@@ -181,3 +182,44 @@ def test_normalize_margin_from_tuple(margin):
 def test_normalize_margin_invalid_input(margin):
     with pytest.raises(TypeError, match="Grid margin should be a numeric value"):
         Grid._normalize_margin(margin)
+
+
+# ----------------------------------------------------------------------
+# Grid - scroll
+# ----------------------------------------------------------------------
+def test_vertical_scroll_non_uniform_rows_raises(simple_grid: Grid):
+    simple_grid._row_heights = [1.5, 1.0]
+    with pytest.raises(GridShapeError, match="the grid must have uniform"):
+        assert simple_grid.scroll(m.DOWN, 2)
+
+
+def test_horizontal_scroll_non_uniform_cols_raises(simple_grid: Grid):
+    simple_grid._col_widths = [1.5, 1.0, 1.0]
+    with pytest.raises(GridShapeError, match="the grid must have uniform"):
+        assert simple_grid.scroll(m.LEFT, 2)
+
+
+def test_horizontal_scroll_non_uniform_rows_does_not_raise(simple_grid: Grid):
+    simple_grid._row_heights = [1.5, 1.0]
+    simple_grid.scroll(m.LEFT, 2)
+
+
+def test_vertical_scroll_non_uniform_cols_does_not_raise(simple_grid: Grid):
+    simple_grid._col_widths = [1.5, 1.0, 1.0]
+    simple_grid.scroll(m.UP, 2)
+
+
+@pytest.mark.parametrize(
+    ("direction", "step", "expected"),
+    [
+        (m.UP, 3, (0, -1 * (1 + 0.3) * 3, 0)),
+        (m.DOWN, -3, (0, -1 * (1 + 0.3) * 3, 0)),
+        (m.LEFT, 2, ((1.5 + 0.1) * 2, 0, 0)),
+        (m.UL, 5, ((1.5 + 0.1) * 5, -1 * (1 + 0.3) * 5, 0)),
+        ((2, 4, 1), 2, (-1 * (1.5 + 0.1) * 2 * 2, -1 * (1 + 0.3) * 2 * 4, 0 * 2 * 1)),
+        (m.DOWN, 0, (0, 0, 0)),
+    ],
+)
+def test_scroll_offset_is_correct(simple_grid: Grid, direction, step, expected):
+    result = simple_grid._compute_scroll_offset(direction, step)
+    np.testing.assert_array_equal(result, expected)

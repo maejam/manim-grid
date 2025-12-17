@@ -12,3 +12,7 @@ class GridValueError(GridError, ValueError):
 
 class GridLabelError(GridKeyError):
     """Raised when a string label is not present in the label mapping."""
+
+
+class GridShapeError(GridKeyError):
+    """Raised when a Grid does not have the right shape."""

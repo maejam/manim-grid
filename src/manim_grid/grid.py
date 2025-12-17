@@ -1,11 +1,12 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 import manim as m
 import numpy as np
-from manim.typing import Vector3D
+from manim.typing import Vector3D, Vector3DLike
 
+from manim_grid.exceptions import GridShapeError
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
@@ -22,6 +23,8 @@ class Cell:
 
     Parameters
     ----------
+    grid
+        The Grid object the cell belongs to.
     rect
         The rectangle that defines the cell’s geometric boundary.
     mob
@@ -35,10 +38,15 @@ class Cell:
         this data; it is merely attached to the cell as a user convenience.
     """
 
-    rect: m.Rectangle
+    _grid: "Grid" = field(repr=False)
+    rect: m.Rectangle = field(repr=False)
     mob: m.Mobject = field(default_factory=EmptyMobject)
     old: m.Mobject = field(default_factory=EmptyMobject)
     tags: Tags = field(default_factory=Tags)
+
+    def __post_init__(self) -> None:
+        # Add as submojects to the grid so that they move around with it.
+        self._grid.add(self.rect, self.mob, self.old)
 
     def insert_mob(
         self,
@@ -69,6 +77,7 @@ class Cell:
         self.old = self.mob
         self.mob = mob
         self.mob.move_to(self.rect, aligned_edge=alignment).shift(-alignment * margin)
+        self._grid.add(self.mob)
 
 
 class Grid(m.Mobject):
@@ -130,6 +139,8 @@ class Grid(m.Mobject):
         super().__init__(**kwargs)
 
         num_rows, num_cols = len(row_heights), len(col_widths)
+        self._row_heights = row_heights
+        self._col_widths = col_widths
         self._buff = self._normalize_buff(buff)
         self._margin = self._normalize_margin(margin)
 
@@ -234,8 +245,8 @@ class Grid(m.Mobject):
         labels_dict: dict[str, int] = dict(zip(labels, nums, strict=True))
         return labels_dict
 
-    @staticmethod
     def _prepare_grid(
+        self,
         num_rows: int,
         num_cols: int,
         row_heights: Sequence[float],
@@ -269,7 +280,7 @@ class Grid(m.Mobject):
                     stroke_opacity=0,
                     fill_opacity=0,
                 )
-                cells[i, j] = Cell(rect=rect)
+                cells[i, j] = Cell(self, rect=rect)
 
         grid = m.VGroup(cell.rect for cell in cells.ravel())
         grid.arrange_in_grid(
@@ -279,3 +290,75 @@ class Grid(m.Mobject):
             aligned_edge=m.UP,
         )
         return cells, grid
+
+    @property
+    def has_uniform_rows(self) -> bool:
+        """Return ``True`` iff all the grid rows have the same height."""
+        return len(set(self._row_heights)) == 1
+
+    @property
+    def has_uniform_cols(self) -> bool:
+        """Return ``True`` iff all the grid cols have the same width."""
+        return len(set(self._col_widths)) == 1
+
+    def scroll(self, direction: Vector3DLike, step: int) -> Self:
+        """Scroll the grid horizontally and/or vertically.
+
+        Parameters
+        ----------
+        direction
+            The direction in which to scroll. Any manim `Vector3DLike` will do.
+        step
+            The number of cells to scroll for.
+
+        Returns
+        -------
+        Self
+            The grid itself. This allows to animate the scrolling and chain animations:
+            `self.play(grid.animate.scroll(DOWN, 3).set_color(RED))`
+        """
+        if direction[0] != 0 and not self.has_uniform_cols:
+            raise GridShapeError(
+                "In order to scroll horizontally, the grid must have "
+                "uniform column widths."
+            )
+
+        if direction[1] != 0 and not self.has_uniform_rows:
+            raise GridShapeError(
+                "In order to scroll vertically, the grid must have uniform row heights."
+            )
+
+        offset = self._compute_scroll_offset(direction, step)
+        self.shift(offset)
+        return self
+
+    def _compute_scroll_offset(
+        self, direction: Vector3DLike, step: int
+    ) -> np.ndarray[tuple[int, int, int], np.dtype[np.float64]]:
+        """Compute the vector by which to shift the grid.
+
+        Parameters
+        ----------
+        direction
+            The direction in which to scroll. Any manim `Vector3DLike` will do.
+        step
+            The number of cells to scroll for.
+
+        Returns
+        -------
+        ndarray
+            Each component encodes the amount by which to shift the grid based on the
+            provided parameters, the row height, column width, horizontal and vertical
+            buffers.
+        """
+        one_cell_offset = np.array(
+            [self._col_widths[0], self._row_heights[0], 0.0]
+        ) + np.array([*self._buff, 0.0])
+
+        offset = (
+            one_cell_offset
+            * -1  # Scrolling UP means shifting DOWN.
+            * direction
+            * step
+        )
+        return np.array(offset)

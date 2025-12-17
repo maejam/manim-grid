@@ -7,10 +7,15 @@ from manim_grid import Grid
 @pytest.fixture
 def simple_grid():
     """A 2x2 grid."""
-    row_heights = [1.0, 2.0]
-    col_widths = [0.5, 1.0, 1.5]
+    row_heights = [1.0, 1.0]
+    col_widths = [1.5, 1.5, 1.5]
     g = Grid(
-        row_heights, col_widths, buff=0.0, margin=0.0, row_labels=(), col_labels=()
+        row_heights,
+        col_widths,
+        buff=(0.1, 0.3),
+        margin=(0.1, 0.3),
+        row_labels=(),
+        col_labels=(),
     )
     return g
 

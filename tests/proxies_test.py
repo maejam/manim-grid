@@ -254,13 +254,13 @@ def test_scalar_tags_selection_str(simple_grid: Grid):
 def test_scalar_tags_selection_repr(simple_grid: Grid):
     assert (
         repr(simple_grid.tags[1, 1])
-        == "ScalarTagsSelection(cell=Cell(rect=Rectangle, mob=EmptyMobject, "
+        == "ScalarTagsSelection(cell=Cell(mob=EmptyMobject, "
         "old=EmptyMobject, tags=Tags()))"
     )
     simple_grid.tags[1, 1].foo = "bar"
     assert (
         repr(simple_grid.tags[1, 1])
-        == "ScalarTagsSelection(cell=Cell(rect=Rectangle, mob=EmptyMobject, "
+        == "ScalarTagsSelection(cell=Cell(mob=EmptyMobject, "
         "old=EmptyMobject, tags=Tags(foo=bar)))"
     )
 
@@ -362,12 +362,12 @@ def test_bulk_tags_selection_str(simple_grid: Grid):
 def test_bulk_tags_selection_repr(simple_grid: Grid):
     assert (
         repr(simple_grid.tags[1, :1])
-        == "BulkTagsSelection(cells=array([Cell(rect=Rectangle, mob=EmptyMobject, "
+        == "BulkTagsSelection(cells=array([Cell(mob=EmptyMobject, "
         "old=EmptyMobject, tags=Tags())],\n      dtype=object))"
     )
     simple_grid.tags[1, :].foo = "bar"
     assert (
         repr(simple_grid.tags[1, :1])
-        == "BulkTagsSelection(cells=array([Cell(rect=Rectangle, mob=EmptyMobject, "
+        == "BulkTagsSelection(cells=array([Cell(mob=EmptyMobject, "
         "old=EmptyMobject, tags=Tags(foo=bar))],\n      dtype=object))"
     )
