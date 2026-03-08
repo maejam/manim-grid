@@ -35,8 +35,9 @@ class Cell:
         The *previous* object that occupied the cell. It is useful for transition
         effects (FadeOut, Transform, etc.). Also initialised with an ``EmptyMobject``.
     tags
-        An class instance for user-defined metadata. The core library does not interpret
-        this data; it is merely attached to the cell as a user convenience.
+        A :class:`proxy.tags_proxy.Tags` instance for user-defined metadata. The core
+        library does not interpret this data; it is merely attached to the cell as a
+        user convenience.
     """
 
     _grid: "Grid" = field(repr=False)
@@ -145,6 +146,11 @@ class Grid(m.Mobject):
         olds
             A proxy giving access to the ``old`` attribute of each cell. Supports
             read-only operation through ``__getitem__``.
+        tags
+            A proxy giving access to user defined key/value tags. Allows attaching
+            metadata to cells. See :class:`manim_grid.proxies.tags_proxy.TagsProxy` for
+            detailed instructions.
+
         """
         super().__init__(**kwargs)
 
