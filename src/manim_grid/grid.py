@@ -5,8 +5,9 @@ from typing import Any, Literal, Self
 import manim as m
 import numpy as np
 from manim.typing import Vector3D, Vector3DLike
+from manim_utils import Stencil
 
-from manim_grid.exceptions import GridShapeError
+from manim_grid.exceptions import GridShapeError, GridViewportError
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
@@ -90,6 +91,8 @@ class Grid(m.Mobject):
         margin: float | tuple[float, float] = 0.1,
         row_labels: Sequence[str] = (),
         col_labels: Sequence[str] = (),
+        num_visible_rows: int | None = None,
+        num_visible_cols: int | None = None,
         **kwargs: Any,
     ) -> None:
         """Provide a rectangular lattice of :class:`Cell` objects.
@@ -122,6 +125,13 @@ class Grid(m.Mobject):
         col_labels
             Optional sequence of strings that label the columns. Same fallback behaviour
             as ``row_labels``.
+        num_visible_rows
+            The number of rows that should be visible. A :class:`manim-utils.Stencil`
+            will be used to cover the hideen rows. This stencil is accessible through
+            the attribute `grid.viewport`. If none of `num_visible_rows` and
+            `num_visible_cols` is defined, the viewport will not be created.
+        num_visible_cols
+            Similar to `num_visible_rows` for columns.
         **kwargs
             Additional keyword arguments forwarded to the base ``Mobject``.
 
@@ -139,8 +149,8 @@ class Grid(m.Mobject):
         super().__init__(**kwargs)
 
         num_rows, num_cols = len(row_heights), len(col_widths)
-        self._row_heights = row_heights
-        self._col_widths = col_widths
+        self._row_heights = list(row_heights)
+        self._col_widths = list(col_widths)
         self._buff = self._normalize_buff(buff)
         self._margin = self._normalize_margin(margin)
 
@@ -151,7 +161,16 @@ class Grid(m.Mobject):
         self._cells, self.grid = self._prepare_grid(
             num_rows, num_cols, row_heights, col_widths, self._buff
         )
-        self.add(self.grid)
+
+        self._num_visible_rows = num_visible_rows or num_rows
+        self._num_visible_cols = num_visible_cols or num_cols
+        if num_visible_rows is not None or num_visible_cols is not None:
+            self.viewport: Stencil | None = self._add_viewport(
+                self._num_visible_rows, self._num_visible_cols
+            )
+            self.add(self.viewport.set_z_index(1))
+        else:
+            self.viewport = None
 
         self.mobs = MobsProxy(self, margin=self._margin)
         self.olds = OldsProxy(self)
@@ -253,7 +272,7 @@ class Grid(m.Mobject):
         col_widths: Sequence[float],
         buff: tuple[float, float],
     ) -> tuple[np.ndarray[tuple[int, int], np.dtype[np.object_]], m.VGroup]:
-        """Create the internal ``Cell`` matrix and the visual ``VGroup``.
+        """Create the internal ``Cell`` matrix and the visual frame ``VGroup``.
 
         Parameters
         ----------
@@ -291,6 +310,13 @@ class Grid(m.Mobject):
         )
         return cells, grid
 
+    def _add_viewport(self, num_rows: int, num_cols: int) -> Stencil:
+        visible_area = [
+            cell.rect for cell in self._cells[:num_rows, :num_cols].flatten()
+        ]
+        clip = m.SurroundingRectangle(m.VGroup(visible_area))
+        return Stencil(clip=clip, wrapped=self.grid).set_stroke(opacity=0)
+
     @property
     def has_uniform_rows(self) -> bool:
         """Return ``True`` iff all the grid rows have the same height."""
@@ -316,7 +342,21 @@ class Grid(m.Mobject):
         Self
             The grid itself. This allows to animate the scrolling and chain animations:
             `self.play(grid.animate.scroll(DOWN, 3).set_color(RED))`
+
+        Raises
+        ------
+        GridViewportError
+            If no viewport is defined.
+        GridShapeError
+            If the grid does not have uniform row heights for vertical scrolling or
+            uniform column widths for horizontal scrolling.
         """
+        if self.viewport is None:
+            raise GridViewportError(
+                "A grid without a viewport cannot be scrolled. "
+                "Define `num_visible_rows` or `num_visible_cols` or both."
+            )
+
         if direction[0] != 0 and not self.has_uniform_cols:
             raise GridShapeError(
                 "In order to scroll horizontally, the grid must have "
@@ -328,8 +368,10 @@ class Grid(m.Mobject):
                 "In order to scroll vertically, the grid must have uniform row heights."
             )
 
+        self.viewport.is_clip_static = True
         offset = self._compute_scroll_offset(direction, step)
         self.shift(offset)
+        self.viewport.is_clip_static = False
         return self
 
     def _compute_scroll_offset(

@@ -10,6 +10,7 @@ license = "GPL-3.0-or-later"
 requires-python = ">=3.11, <3.14"
 dependencies = [
     "manim>=0.19.0",
+    "manim-utils",
 ]
 
 [dependency-groups]
@@ -31,6 +32,9 @@ source-include = [
     "tests/",
     "uv.lock"
 ]
+
+[tool.uv.sources]
+manim-utils = { git = "https://github.com/maejam/manim-utils.git" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

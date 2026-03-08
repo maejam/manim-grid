@@ -16,6 +16,7 @@ def simple_grid():
         margin=(0.1, 0.3),
         row_labels=(),
         col_labels=(),
+        num_visible_rows=1,
     )
     return g
 

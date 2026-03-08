@@ -2,7 +2,7 @@ import manim as m
 import numpy as np
 import pytest
 
-from manim_grid.exceptions import GridShapeError
+from manim_grid.exceptions import GridShapeError, GridViewportError
 from manim_grid.grid import Cell, EmptyMobject, Grid, Tags
 
 
@@ -187,16 +187,22 @@ def test_normalize_margin_invalid_input(margin):
 # ----------------------------------------------------------------------
 # Grid - scroll
 # ----------------------------------------------------------------------
+def test_scrolling_without_a_viewport_raises():
+    g = Grid([1, 1], [1, 1, 1])
+    with pytest.raises(GridViewportError, match="A grid without a viewport"):
+        g.scroll(m.DOWN, 1)
+
+
 def test_vertical_scroll_non_uniform_rows_raises(simple_grid: Grid):
     simple_grid._row_heights = [1.5, 1.0]
     with pytest.raises(GridShapeError, match="the grid must have uniform"):
-        assert simple_grid.scroll(m.DOWN, 2)
+        simple_grid.scroll(m.DOWN, 2)
 
 
 def test_horizontal_scroll_non_uniform_cols_raises(simple_grid: Grid):
     simple_grid._col_widths = [1.5, 1.0, 1.0]
     with pytest.raises(GridShapeError, match="the grid must have uniform"):
-        assert simple_grid.scroll(m.LEFT, 2)
+        simple_grid.scroll(m.LEFT, 2)
 
 
 def test_horizontal_scroll_non_uniform_rows_does_not_raise(simple_grid: Grid):
