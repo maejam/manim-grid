@@ -170,13 +170,14 @@ class Grid(m.Mobject):
 
         self._num_visible_rows = num_visible_rows or num_rows
         self._num_visible_cols = num_visible_cols or num_cols
+
         if num_visible_rows is not None or num_visible_cols is not None:
-            self.viewport: Stencil | None = self._add_viewport(
+            self._viewport: Stencil | None = self._add_viewport(
                 self._num_visible_rows, self._num_visible_cols
             )
-            self.add(self.viewport.set_z_index(1))
+            self.add(self._viewport.set_z_index(1))
         else:
-            self.viewport = None
+            self._viewport = None
 
         self.mobs = MobsProxy(self, margin=self._margin)
         self.olds = OldsProxy(self)
@@ -316,6 +317,15 @@ class Grid(m.Mobject):
         )
         return cells, grid
 
+    @property
+    def viewport(self) -> Stencil:
+        if self._viewport is None:
+            raise GridViewportError(
+                "This Grid does not have a viewport. Define `num_visible_rows` "
+                "and/or `num_visible_cols` to generate one."
+            )
+        return self._viewport
+
     def _add_viewport(self, num_rows: int, num_cols: int) -> Stencil:
         visible_area = [
             cell.rect for cell in self._cells[:num_rows, :num_cols].flatten()
@@ -357,7 +367,7 @@ class Grid(m.Mobject):
             If the grid does not have uniform row heights for vertical scrolling or
             uniform column widths for horizontal scrolling.
         """
-        if self.viewport is None:
+        if self._viewport is None:
             raise GridViewportError(
                 "A grid without a viewport cannot be scrolled. "
                 "Define `num_visible_rows` or `num_visible_cols` or both."
