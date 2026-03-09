@@ -80,7 +80,7 @@ class Cell:
         self.old = self.mob
         self.mob = mob
         self.mob.move_to(self.rect, aligned_edge=alignment).shift(-alignment * margin)
-        self._grid.add(self.mob)
+        self._grid.add_to_back(self.mob)
 
 
 class Grid(m.Mobject):
@@ -179,7 +179,7 @@ class Grid(m.Mobject):
             self._viewport: Stencil = self._add_viewport(
                 self._num_visible_rows, self._num_visible_cols
             )
-            self.add(self._viewport.set_z_index(1))
+            self.add(self._viewport)
         else:
             self._viewport = None  # type: ignore[assignment]
 
