@@ -37,7 +37,7 @@ def test_cell_insert_mob_updates_old_and_mob(dummy_mob):
 # Grid
 # ----------------------------------------------------------------------
 def test_prepare_grid_shapes(simple_grid):
-    cells, vgroup = simple_grid._cells, simple_grid.grid
+    cells, vgroup = simple_grid._cells, simple_grid.frame
     assert cells.shape == (2, 3)
     assert all(isinstance(c, Cell) for c in cells.ravel())
     rects = [cell.rect for cell in cells.ravel()]

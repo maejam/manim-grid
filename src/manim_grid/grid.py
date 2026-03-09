@@ -138,7 +138,7 @@ class Grid(m.Mobject):
 
         Attributes
         ----------
-        grid
+        frame
             The ``VGroup`` containing the Rectangle objects defining each cell boundary.
         mobs
             A proxy giving access to the ``mob`` attribute of each cell. Supports
@@ -164,7 +164,7 @@ class Grid(m.Mobject):
         _col_labels = self._prepare_labels(col_labels, num_cols)
         self._label_mapper = LabelMapper(_row_labels, _col_labels)
 
-        self._cells, self.grid = self._prepare_grid(
+        self._cells, self.frame = self._prepare_grid(
             num_rows, num_cols, row_heights, col_widths, self._buff
         )
 
@@ -308,14 +308,14 @@ class Grid(m.Mobject):
                 )
                 cells[i, j] = Cell(self, rect=rect)
 
-        grid = m.VGroup(cell.rect for cell in cells.ravel())
-        grid.arrange_in_grid(
+        frame = m.VGroup(cell.rect for cell in cells.ravel())
+        frame.arrange_in_grid(
             rows=num_rows,
             cols=num_cols,
             buff=buff,
             aligned_edge=m.UP,
         )
-        return cells, grid
+        return cells, frame
 
     @property
     def viewport(self) -> Stencil:
@@ -331,7 +331,7 @@ class Grid(m.Mobject):
             cell.rect for cell in self._cells[:num_rows, :num_cols].flatten()
         ]
         clip = m.SurroundingRectangle(m.VGroup(visible_area))
-        return Stencil(clip=clip, wrapped=self.grid).set_stroke(opacity=0)
+        return Stencil(clip=clip, wrapped=self.frame).set_stroke(opacity=0)
 
     @property
     def has_uniform_rows(self) -> bool:
