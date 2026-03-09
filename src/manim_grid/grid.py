@@ -11,6 +11,7 @@ from manim_grid.exceptions import GridShapeError, GridViewportError
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
+from manim_grid.proxies.rects_proxy import RectsProxy
 from manim_grid.proxies.tags_proxy import Tags, TagsProxy
 
 
@@ -140,6 +141,9 @@ class Grid(m.Mobject):
         ----------
         frame
             The ``VGroup`` containing the Rectangle objects defining each cell boundary.
+        rects
+            A proxy giving access to the same Rectangles as a numpy array for greater
+            control.
         mobs
             A proxy giving access to the ``mob`` attribute of each cell. Supports
             read and write operations through ``__getitem__`` and ``__setitem__``.
@@ -172,13 +176,14 @@ class Grid(m.Mobject):
         self._num_visible_cols = num_visible_cols or num_cols
 
         if num_visible_rows is not None or num_visible_cols is not None:
-            self._viewport: Stencil | None = self._add_viewport(
+            self._viewport: Stencil = self._add_viewport(
                 self._num_visible_rows, self._num_visible_cols
             )
             self.add(self._viewport.set_z_index(1))
         else:
-            self._viewport = None
+            self._viewport = None  # type: ignore[assignment]
 
+        self.rects = RectsProxy(self)
         self.mobs = MobsProxy(self, margin=self._margin)
         self.olds = OldsProxy(self)
         self.tags = TagsProxy(self)
@@ -330,7 +335,7 @@ class Grid(m.Mobject):
         visible_area = [
             cell.rect for cell in self._cells[:num_rows, :num_cols].flatten()
         ]
-        clip = m.SurroundingRectangle(m.VGroup(visible_area))
+        clip = m.SurroundingRectangle(m.VGroup(visible_area), buff=0)
         return Stencil(clip=clip, wrapped=self.frame).set_stroke(opacity=0)
 
     @property

@@ -54,9 +54,9 @@ class _BaseProxy(Generic[T]):
 
     Attributes
     ----------
-    attr
+    _attr
         Name of the attribute on :class:`~manim_grid.grid.Cell` that the proxy
-        manipulates (e.g. ``"mob"``, ``"old"``, ``"tags"``).
+        manipulates (e.g. ``"mob"``, ``"old"``, ``"tags"``, ``"rect``").
 
     See Also
     --------
