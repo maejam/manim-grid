@@ -164,9 +164,9 @@ class Grid(m.Mobject):
         self._buff = self._normalize_buff(buff)
         self._margin = self._normalize_margin(margin)
 
-        _row_labels = self._prepare_labels(row_labels, num_rows)
-        _col_labels = self._prepare_labels(col_labels, num_cols)
-        self._label_mapper = LabelMapper(_row_labels, _col_labels)
+        self._row_labels = self._prepare_labels(row_labels, num_rows)
+        self._col_labels = self._prepare_labels(col_labels, num_cols)
+        self._label_mapper = LabelMapper(self._row_labels, self._col_labels)
 
         self._cells, self.frame = self._prepare_grid(
             num_rows, num_cols, row_heights, col_widths, self._buff
@@ -275,6 +275,32 @@ class Grid(m.Mobject):
             )
         labels_dict: dict[str, int] = dict(zip(labels, nums, strict=True))
         return labels_dict
+
+    def row_labels(self, **kwargs: Any) -> list[m.Text]:
+        """Return the row labels as a list of Text Mobjects.
+
+        This is a convenience method meant to easily add the labels to the grid.
+
+        Parameters
+        ----------
+        kwargs
+            Keyword arguments passed to the `Text` constructor.
+
+        """
+        return [m.Text(label, **kwargs) for label in self._row_labels]
+
+    def col_labels(self, **kwargs: Any) -> list[m.Text]:
+        """Return the column labels as a list of Text Mobjects.
+
+        This is a convenience method meant to easily add the labels to the grid.
+
+        Parameters
+        ----------
+        kwargs
+            Keyword arguments passed to the `Text` constructor.
+
+        """
+        return [m.Text(label, **kwargs) for label in self._col_labels]
 
     def _prepare_grid(
         self,
