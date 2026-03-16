@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, cast
 
 import manim as m
 import numpy as np
@@ -48,8 +48,7 @@ class Cell:
     tags: Tags = field(default_factory=Tags)
 
     def __post_init__(self) -> None:
-        # Add as submojects to the grid so that they move around with it.
-        self._grid.add(self.rect, self.mob, self.old)
+        self._grid._all.add(self.rect, self.old, self.mob)
 
     def insert_mob(
         self,
@@ -59,12 +58,14 @@ class Cell:
     ) -> None:
         """Insert a new mobject in the cell.
 
-        This method performs three steps:
+        This method performs four steps:
 
         1. Store the existing ``mob`` in ``self.old``.
         2. Assign the supplied ``mob`` to ``self.mob``.
         3. Position the new object inside ``self.rect`` using manim’s
            ``move_to``/``shift`` methods.
+        4. Add the new mobject to the Grid's `_all` attribute so that it is transformed
+           alongside the grid.
 
         Parameters
         ----------
@@ -80,10 +81,10 @@ class Cell:
         self.old = self.mob
         self.mob = mob
         self.mob.move_to(self.rect, aligned_edge=alignment).shift(-alignment * margin)
-        self._grid.add_to_back(self.mob)
+        self._grid._all.add(self.mob)
 
 
-class Grid(m.Mobject):
+class Grid(m.Group):
     def __init__(
         self,
         row_heights: Sequence[float],
@@ -103,6 +104,8 @@ class Grid(m.Mobject):
 
         * creating the underlying ``np.ndarray`` of ``Cell`` instances,
         * arranging the rectangle placeholders in a Manim ``VGroup``,
+        * adding a ``viewport`` in the form of a :class:`manim_utils.Stencil` object
+          if at least one of ``num_visible_rows`` or ``num_visible_cols`` is specified.
         * exposing convenient proxy objects (``mobs``, ``olds``, ...) that forward
           attribute access to the underlying cells.
 
@@ -128,22 +131,25 @@ class Grid(m.Mobject):
             Optional sequence of strings that label the columns. Same fallback behaviour
             as ``row_labels``.
         num_visible_rows
-            The number of rows that should be visible. A :class:`manim-utils.Stencil`
-            will be used to cover the hideen rows. This stencil is accessible through
+            The number of rows that should be visible. A :class:`manim_utils.Stencil`
+            will be used to cover the hidden rows. This stencil is accessible through
             the attribute `grid.viewport`. If none of `num_visible_rows` and
             `num_visible_cols` is defined, the viewport will not be created.
         num_visible_cols
             Similar to `num_visible_rows` for columns.
         **kwargs
-            Additional keyword arguments forwarded to the base ``Mobject``.
+            Additional keyword arguments forwarded to the base ``Group``.
 
         Attributes
         ----------
         frame
             The ``VGroup`` containing the Rectangle objects defining each cell boundary.
+            Useful when acting on all rectangles at once:
+            `grid.frame.set_fill(WHITE, opacity=1)`
         rects
             A proxy giving access to the same Rectangles as a numpy array for greater
-            control.
+            control. For instance, targeting only the first column:
+            `grid.rects[:, 0].set_fill(WHITE, opacity=1)`
         mobs
             A proxy giving access to the ``mob`` attribute of each cell. Supports
             read and write operations through ``__getitem__`` and ``__setitem__``.
@@ -156,6 +162,8 @@ class Grid(m.Mobject):
             detailed instructions.
 
         """
+        self._all = m.Group()
+        self._viewport: Stencil | None = None
         super().__init__(**kwargs)
 
         num_rows, num_cols = len(row_heights), len(col_widths)
@@ -176,12 +184,10 @@ class Grid(m.Mobject):
         self._num_visible_cols = num_visible_cols or num_cols
 
         if num_visible_rows is not None or num_visible_cols is not None:
-            self._viewport: Stencil = self._add_viewport(
+            self._viewport = self._create_viewport(
                 self._num_visible_rows, self._num_visible_cols
             )
             self.add(self._viewport)
-        else:
-            self._viewport = None  # type: ignore[assignment]
 
         self.rects = RectsProxy(self)
         self.mobs = MobsProxy(self, margin=self._margin)
@@ -334,8 +340,6 @@ class Grid(m.Mobject):
                 rect = m.Rectangle(
                     height=row_h,
                     width=col_w,
-                    stroke_opacity=0,
-                    fill_opacity=0,
                 )
                 cells[i, j] = Cell(self, rect=rect)
 
@@ -348,8 +352,73 @@ class Grid(m.Mobject):
         )
         return cells, frame
 
+    def add(self, *mobjects: m.Mobject) -> Self:
+        """Add mobjects as submobjects.
+
+        This overriden method performs the following steps:
+        1. actually add the provided mobjects to the Grid (so that they will be seen
+           if the Grid is added to the scene) unpacking any Group/VGroup.
+        2. add the provided mobjects to ``Grid._all`` unpacking any Group/VGroup.
+        3. make sure the viewport (if any) remains on top and covers the newly added
+           mobjects.
+
+        See Also
+        --------
+        :meth:`.family_members_with_points`
+        """
+        for mob in mobjects:
+            if isinstance(mob, (m.Group, m.VGroup)):
+                # get_family() recursively flattens everything but includes the Group
+                family = mob.get_family()[1:]  # Skip the group itself
+                super().add(*family)
+                self._all.add(*family)
+            else:
+                super().add(mob)
+                self._all.add(mob)
+
+        if self._viewport is not None:
+            super().add(self.viewport)
+        return self
+
+    def remove(self, *mobjects: m.Mobject) -> Self:
+        """Remove :attr:`submobjects`.
+
+        The mobjects are removed from :attr:`submobjects`, if they exist,
+        unpacking any Group/VGroup.
+        """
+        for mob in mobjects:
+            if isinstance(mob, (m.Group, m.VGroup)):
+                super().remove(*mob.get_family()[1:])
+            else:
+                super().remove(mob)
+        return self
+
+    def family_members_with_points(self) -> list[m.Mobject]:  # type: ignore[override]
+        """Return the family members included in the `_all` attribute.
+
+        Every transformation call this method to retrieve the submobjects on which they
+        should operate. By returning the result of the same method call on
+        ``Grid._all``, we make it possible to also transform the mojects that are not
+        actual submobjects of the Grid, effectively decoupling the 2 consequences of
+        being a submoject: being visible when the main Mobject is added to the scene
+        and being transformed with it.
+        Many thanks to @nikolaj for this elegant solution:
+        https://discord.com/channels/1453870851807117363/1453897466884784333/threads/1481607827884605545
+        """
+        return cast(list[m.Mobject], self._all.family_members_with_points())
+
     @property
     def viewport(self) -> Stencil:
+        """A property giving access to the viewport if it exist.
+
+        Returns
+        -------
+        The Stencil object if it exists.
+
+        Raises
+        ------
+        GridViewportError if it does not exist.
+        """
         if self._viewport is None:
             raise GridViewportError(
                 "This Grid does not have a viewport. Define `num_visible_rows` "
@@ -357,7 +426,8 @@ class Grid(m.Mobject):
             )
         return self._viewport
 
-    def _add_viewport(self, num_rows: int, num_cols: int) -> Stencil:
+    def _create_viewport(self, num_rows: int, num_cols: int) -> Stencil:
+        """Create the stencil to hide cells that should not be visible."""
         visible_area = [
             cell.rect for cell in self._cells[:num_rows, :num_cols].flatten()
         ]
@@ -441,7 +511,7 @@ class Grid(m.Mobject):
             buffers.
         """
         one_cell_offset = np.array(
-            [self._col_widths[0], self._row_heights[0], 0.0]
+            [self.frame[0].width, self.frame[0].height, 0.0]
         ) + np.array([*self._buff, 0.0])
 
         offset = (

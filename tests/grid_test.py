@@ -229,3 +229,69 @@ def test_vertical_scroll_non_uniform_cols_does_not_raise(simple_grid: Grid):
 def test_scroll_offset_is_correct(simple_grid: Grid, direction, step, expected):
     result = simple_grid._compute_scroll_offset(direction, step)
     np.testing.assert_array_equal(result, expected)
+
+
+# ----------------------------------------------------------------------
+# Grid - _all attribute
+# ----------------------------------------------------------------------
+def test_new_grid_has_right_submobjects_and_all_Group(simple_grid: Grid):
+    assert simple_grid.rects[0, 0] not in simple_grid.submobjects
+    assert simple_grid.rects[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.olds[0, 0] not in simple_grid.submobjects
+    assert simple_grid.olds[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.mobs[0, 0] not in simple_grid.submobjects
+    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
+
+
+def test_grid_has_right_submobjects_and_all_Group_after_adding_mob(
+    simple_grid: Grid,
+):
+    simple_grid.add(simple_grid.mobs[0, 0])
+    assert simple_grid.rects[0, 0] not in simple_grid.submobjects
+    assert simple_grid.rects[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.olds[0, 0] not in simple_grid.submobjects
+    assert simple_grid.olds[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.mobs[0, 0] in simple_grid.submobjects
+    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
+
+
+def test_grid_has_right_submobjects_and_all_Group_submojects_after_removing_mob(
+    simple_grid: Grid,
+):
+    simple_grid.add(simple_grid.mobs[0, 0])
+    simple_grid.remove(simple_grid.mobs[0, 0])
+    assert simple_grid.rects[0, 0] not in simple_grid.submobjects
+    assert simple_grid.rects[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.olds[0, 0] not in simple_grid.submobjects
+    assert simple_grid.olds[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.mobs[0, 0] not in simple_grid.submobjects
+    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
+
+
+def test_grid_has_right_submobjects_and_all_Group_submojects_after_adding_group(
+    simple_grid: Grid,
+):
+    assert simple_grid.mobs[0, 0] not in simple_grid.submobjects
+    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
+    simple_grid.add(simple_grid.mobs[:])
+    assert simple_grid.rects[0, 0] not in simple_grid.submobjects
+    assert simple_grid.rects[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.olds[0, 0] not in simple_grid.submobjects
+    assert simple_grid.olds[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.mobs[0, 0] in simple_grid.submobjects
+    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
+
+
+def test_grid_has_right_submobjects_and_hidden_submojects_after_removing_group(
+    simple_grid: Grid,
+):
+    simple_grid.add(simple_grid.mobs[:])
+    simple_grid.remove(simple_grid.mobs[:, 0])
+    assert simple_grid.rects[0, 0] not in simple_grid.submobjects
+    assert simple_grid.rects[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.olds[0, 0] not in simple_grid.submobjects
+    assert simple_grid.olds[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.mobs[0, 0] not in simple_grid.submobjects
+    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.mobs[0, 1] in simple_grid.submobjects
+    assert simple_grid.mobs[0, 1] in simple_grid._all.submobjects
