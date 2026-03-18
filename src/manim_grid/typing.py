@@ -20,7 +20,7 @@ numpy array.
 SingleKey: TypeAlias = int | str
 """A single row or column key accepted as user input."""
 
-ListKey: TypeAlias = list[SingleKey]
+ListKey: TypeAlias = list[SingleKey] | list[int] | list[str]
 """A list of row or column keys accepted as user input."""
 
 SliceKey: TypeAlias = slice
