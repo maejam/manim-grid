@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal, Self, cast
+from typing import Any, Literal, Self
 
 import manim as m
 import numpy as np
@@ -48,7 +48,7 @@ class Cell:
     tags: Tags = field(default_factory=Tags)
 
     def __post_init__(self) -> None:
-        self._grid._all.add(self.rect, self.old, self.mob)
+        self._grid.add(self.rect.set_opacity(0), self.old, self.mob)
 
     def insert_mob(
         self,
@@ -58,14 +58,12 @@ class Cell:
     ) -> None:
         """Insert a new mobject in the cell.
 
-        This method performs four steps:
+        This method performs three steps:
 
         1. Store the existing ``mob`` in ``self.old``.
         2. Assign the supplied ``mob`` to ``self.mob``.
         3. Position the new object inside ``self.rect`` using manim’s
            ``move_to``/``shift`` methods.
-        4. Add the new mobject to the Grid's `_all` attribute so that it is transformed
-           alongside the grid.
 
         Parameters
         ----------
@@ -81,7 +79,7 @@ class Cell:
         self.old = self.mob
         self.mob = mob
         self.mob.move_to(self.rect, aligned_edge=alignment).shift(-alignment * margin)
-        self._grid._all.add(self.mob)
+        self._grid.add(self.mob)
 
 
 class Grid(m.Group):
@@ -162,7 +160,6 @@ class Grid(m.Group):
             detailed instructions.
 
         """
-        self._all = m.Group()
         self._viewport: Stencil | None = None
         super().__init__(**kwargs)
 
@@ -355,57 +352,13 @@ class Grid(m.Group):
     def add(self, *mobjects: m.Mobject) -> Self:
         """Add mobjects as submobjects.
 
-        This overriden method performs the following steps:
-        1. actually add the provided mobjects to the Grid (so that they will be seen
-           if the Grid is added to the scene) unpacking any Group/VGroup.
-        2. add the provided mobjects to ``Grid._all`` unpacking any Group/VGroup.
-        3. make sure the viewport (if any) remains on top and covers the newly added
-           mobjects.
-
-        See Also
-        --------
-        :meth:`.family_members_with_points`
+        This overriden method makes sure the viewport (if any) remains on top and covers
+        the newly added mobjects.
         """
-        for mob in mobjects:
-            if isinstance(mob, (m.Group, m.VGroup)):
-                # get_family() recursively flattens everything but includes the Group
-                family = mob.get_family()[1:]  # Skip the group itself
-                super().add(*family)
-                self._all.add(*family)
-            else:
-                super().add(mob)
-                self._all.add(mob)
-
+        super().add(*mobjects)
         if self._viewport is not None:
             super().add(self.viewport)
         return self
-
-    def remove(self, *mobjects: m.Mobject) -> Self:
-        """Remove :attr:`submobjects`.
-
-        The mobjects are removed from :attr:`submobjects`, if they exist,
-        unpacking any Group/VGroup.
-        """
-        for mob in mobjects:
-            if isinstance(mob, (m.Group, m.VGroup)):
-                super().remove(*mob.get_family()[1:])
-            else:
-                super().remove(mob)
-        return self
-
-    def family_members_with_points(self) -> list[m.Mobject]:  # type: ignore[override]
-        """Return the family members included in the `_all` attribute.
-
-        Every transformation call this method to retrieve the submobjects on which they
-        should operate. By returning the result of the same method call on
-        ``Grid._all``, we make it possible to also transform the mojects that are not
-        actual submobjects of the Grid, effectively decoupling the 2 consequences of
-        being a submoject: being visible when the main Mobject is added to the scene
-        and being transformed with it.
-        Many thanks to @nikolaj for this elegant solution:
-        https://discord.com/channels/1453870851807117363/1453897466884784333/threads/1481607827884605545
-        """
-        return cast(list[m.Mobject], self._all.family_members_with_points())
 
     @property
     def viewport(self) -> Stencil:

@@ -1,6 +1,7 @@
 import manim as m
 import numpy as np
 import pytest
+from manim_utils import Stencil
 
 from manim_grid.exceptions import GridShapeError, GridViewportError
 from manim_grid.grid import Cell, EmptyMobject, Grid, Tags
@@ -232,66 +233,70 @@ def test_scroll_offset_is_correct(simple_grid: Grid, direction, step, expected):
 
 
 # ----------------------------------------------------------------------
-# Grid - _all attribute
+# Grid - submobjects
 # ----------------------------------------------------------------------
-def test_new_grid_has_right_submobjects_and_all_Group(simple_grid: Grid):
-    assert simple_grid.rects[0, 0] not in simple_grid.submobjects
-    assert simple_grid.rects[0, 0] in simple_grid._all.submobjects
-    assert simple_grid.olds[0, 0] not in simple_grid.submobjects
-    assert simple_grid.olds[0, 0] in simple_grid._all.submobjects
-    assert simple_grid.mobs[0, 0] not in simple_grid.submobjects
-    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
-
-
-def test_grid_has_right_submobjects_and_all_Group_after_adding_mob(
-    simple_grid: Grid,
-):
-    simple_grid.add(simple_grid.mobs[0, 0])
-    assert simple_grid.rects[0, 0] not in simple_grid.submobjects
-    assert simple_grid.rects[0, 0] in simple_grid._all.submobjects
-    assert simple_grid.olds[0, 0] not in simple_grid.submobjects
-    assert simple_grid.olds[0, 0] in simple_grid._all.submobjects
+def test_new_grid_has_right_submobjects(simple_grid: Grid):
+    assert simple_grid.rects[0, 0] in simple_grid.submobjects
+    assert simple_grid.olds[0, 0] in simple_grid.submobjects
     assert simple_grid.mobs[0, 0] in simple_grid.submobjects
-    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
+    assert isinstance(simple_grid.submobjects[-1], Stencil)
 
 
-def test_grid_has_right_submobjects_and_all_Group_submojects_after_removing_mob(
+def test_grid_has_right_submobjects_after_adding_mob(
     simple_grid: Grid,
 ):
-    simple_grid.add(simple_grid.mobs[0, 0])
+    old = simple_grid.mobs[0, 0]
+    c = m.Circle()
+    simple_grid.mobs[0, 0] = c
+    assert simple_grid.rects[0, 0] in simple_grid.submobjects
+    assert simple_grid.olds[0, 0] is old
+    assert old in simple_grid.submobjects
+    assert simple_grid.mobs[0, 0] is c
+    assert c in simple_grid.submobjects
+    assert isinstance(simple_grid.submobjects[-1], Stencil)
+
+
+def test_grid_has_right_submobjects_after_removing_mob(
+    simple_grid: Grid,
+):
+    r = m.Rectangle()
+    simple_grid.mobs[0, 0] = r
     simple_grid.remove(simple_grid.mobs[0, 0])
-    assert simple_grid.rects[0, 0] not in simple_grid.submobjects
-    assert simple_grid.rects[0, 0] in simple_grid._all.submobjects
-    assert simple_grid.olds[0, 0] not in simple_grid.submobjects
-    assert simple_grid.olds[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.rects[0, 0] in simple_grid.submobjects
+    assert simple_grid.olds[0, 0] in simple_grid.submobjects
     assert simple_grid.mobs[0, 0] not in simple_grid.submobjects
-    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
+    assert simple_grid.mobs[0, 0] is r
+    assert isinstance(simple_grid.submobjects[-1], Stencil)
 
 
-def test_grid_has_right_submobjects_and_all_Group_submojects_after_adding_group(
+def test_grid_has_right_submobjects_after_adding_group(
     simple_grid: Grid,
 ):
-    assert simple_grid.mobs[0, 0] not in simple_grid.submobjects
-    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
-    simple_grid.add(simple_grid.mobs[:])
-    assert simple_grid.rects[0, 0] not in simple_grid.submobjects
-    assert simple_grid.rects[0, 0] in simple_grid._all.submobjects
-    assert simple_grid.olds[0, 0] not in simple_grid.submobjects
-    assert simple_grid.olds[0, 0] in simple_grid._all.submobjects
-    assert simple_grid.mobs[0, 0] in simple_grid.submobjects
-    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
+    r = m.Rectangle()
+    c = m.Circle()
+    t = m.Triangle()
+    simple_grid.mobs[0] = [r, c, t]
+    assert simple_grid.mobs[0, 0] is r
+    assert simple_grid.mobs[0, 1] is c
+    assert simple_grid.mobs[0, 2] is t
+    assert r in simple_grid.submobjects
+    assert c in simple_grid.submobjects
+    assert t in simple_grid.submobjects
+    assert isinstance(simple_grid.submobjects[-1], Stencil)
 
 
-def test_grid_has_right_submobjects_and_hidden_submojects_after_removing_group(
+def test_grid_has_right_submobjects_after_removing_group(
     simple_grid: Grid,
 ):
-    simple_grid.add(simple_grid.mobs[:])
-    simple_grid.remove(simple_grid.mobs[:, 0])
-    assert simple_grid.rects[0, 0] not in simple_grid.submobjects
-    assert simple_grid.rects[0, 0] in simple_grid._all.submobjects
-    assert simple_grid.olds[0, 0] not in simple_grid.submobjects
-    assert simple_grid.olds[0, 0] in simple_grid._all.submobjects
-    assert simple_grid.mobs[0, 0] not in simple_grid.submobjects
-    assert simple_grid.mobs[0, 0] in simple_grid._all.submobjects
-    assert simple_grid.mobs[0, 1] in simple_grid.submobjects
-    assert simple_grid.mobs[0, 1] in simple_grid._all.submobjects
+    r = m.Rectangle()
+    c = m.Circle()
+    t = m.Triangle()
+    simple_grid.mobs[0] = [r, c, t]
+    simple_grid.remove(*simple_grid.mobs[0, :2])
+    assert simple_grid.mobs[0, 0] is r
+    assert simple_grid.mobs[0, 1] is c
+    assert simple_grid.mobs[0, 2] is t
+    assert r not in simple_grid.submobjects
+    assert c not in simple_grid.submobjects
+    assert t in simple_grid.submobjects
+    assert isinstance(simple_grid.submobjects[-1], Stencil)

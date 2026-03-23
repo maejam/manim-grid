@@ -6,7 +6,7 @@ from manim_grid import Grid
 
 @pytest.fixture
 def simple_grid():
-    """A 2x2 grid."""
+    """A 2x3 grid."""
     row_heights = [1.0, 1.0]
     col_widths = [1.5, 1.5, 1.5]
     g = Grid(
