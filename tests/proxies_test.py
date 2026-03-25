@@ -115,19 +115,19 @@ def test_alignment_vector_is_respected(simple_grid, dummy_mob):
     # default: m.ORIGIN.
     idx = (1, 1)
     simple_grid.mobs[idx] = dummy_mob
-    assert dummy_mob.aligned_edge.all() == m.ORIGIN.all()
+    assert np.array_equal(dummy_mob.aligned_edge, m.ORIGIN)
 
     # tuple alignment.
     tup_alignment = (0.2, 0.5, 0.0)
     idx = (1, 1, tup_alignment)
     simple_grid.mobs[idx] = dummy_mob
-    assert dummy_mob.aligned_edge.all() == np.array(tup_alignment).all()
+    assert np.array_equal(dummy_mob.aligned_edge, np.array(tup_alignment))
 
     # array alignment.
     arr_alignment = m.UP
     idx = (1, 0, arr_alignment)
     simple_grid.mobs[idx] = dummy_mob
-    assert dummy_mob.aligned_edge.all() == arr_alignment.all()
+    assert np.array_equal(dummy_mob.aligned_edge, arr_alignment)
 
 
 def test_bulk_assignment_with_sequence(simple_grid):

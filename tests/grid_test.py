@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from manim_utils import Stencil
 
-from manim_grid.exceptions import GridShapeError, GridViewportError
+from manim_grid.exceptions import GridFrameError, GridShapeError, GridViewportError
 from manim_grid.grid import Cell, EmptyMobject, Grid, Tags
 
 
@@ -252,24 +252,7 @@ def test_grid_has_right_submobjects_after_adding_mob(
     assert simple_grid.olds[0, 0] is old
     assert old in simple_grid.submobjects
     assert simple_grid.mobs[0, 0] is c
-    assert c in simple_grid.submobjects
-    assert isinstance(simple_grid.submobjects[-1], Stencil)
-    simple_grid.frame = m.Rectangle()
-    assert isinstance(simple_grid.submobjects[-1], Stencil)
-
-
-def test_grid_has_right_submobjects_after_removing_mob(
-    simple_grid: Grid,
-):
-    r = m.Rectangle()
-    simple_grid.mobs[0, 0] = r
-    simple_grid.remove(simple_grid.mobs[0, 0])
-    assert simple_grid.rects[0, 0] in simple_grid.submobjects
-    assert simple_grid.olds[0, 0] in simple_grid.submobjects
-    assert simple_grid.mobs[0, 0] not in simple_grid.submobjects
-    assert simple_grid.mobs[0, 0] is r
-    assert isinstance(simple_grid.submobjects[-1], Stencil)
-    simple_grid.frame = m.Rectangle()
+    assert c not in simple_grid.submobjects
     assert isinstance(simple_grid.submobjects[-1], Stencil)
 
 
@@ -283,28 +266,52 @@ def test_grid_has_right_submobjects_after_adding_group(
     assert simple_grid.mobs[0, 0] is r
     assert simple_grid.mobs[0, 1] is c
     assert simple_grid.mobs[0, 2] is t
-    assert r in simple_grid.submobjects
-    assert c in simple_grid.submobjects
-    assert t in simple_grid.submobjects
-    assert isinstance(simple_grid.submobjects[-1], Stencil)
-    simple_grid.frame = m.Rectangle()
-    assert isinstance(simple_grid.submobjects[-1], Stencil)
-
-
-def test_grid_has_right_submobjects_after_removing_group(
-    simple_grid: Grid,
-):
-    r = m.Rectangle()
-    c = m.Circle()
-    t = m.Triangle()
-    simple_grid.mobs[0] = [r, c, t]
-    simple_grid.remove(*simple_grid.mobs[0, :2])
-    assert simple_grid.mobs[0, 0] is r
-    assert simple_grid.mobs[0, 1] is c
-    assert simple_grid.mobs[0, 2] is t
     assert r not in simple_grid.submobjects
     assert c not in simple_grid.submobjects
-    assert t in simple_grid.submobjects
+    assert t not in simple_grid.submobjects
     assert isinstance(simple_grid.submobjects[-1], Stencil)
-    simple_grid.frame = m.Rectangle()
-    assert isinstance(simple_grid.submobjects[-1], Stencil)
+
+
+# ----------------------------------------------------------------------
+# Grid - frame
+# ----------------------------------------------------------------------
+def test_accesing_inexistent_frame_raises(simple_grid: Grid):
+    with pytest.raises(GridFrameError, match="This Grid does not have a frame."):
+        assert simple_grid.frame
+
+
+def test_frame_without_viewport():
+    g = Grid([1, 1], [1, 1, 1])
+    assert g._frame is None
+    r = m.SurroundingRectangle(g)
+    g.frame = r
+    assert isinstance(g.frame, m.Difference)
+    assert np.array_equal(g.frame.get_center(), g.get_center())
+    g.shift(m.RIGHT)
+    assert np.array_equal(g.frame.get_center(), g.get_center())
+    g.scale(0.1)
+    assert np.array_equal(g.frame.get_center(), g.get_center())
+    assert g.frame in g.submobjects
+
+
+def test_frame_with_viewport(simple_grid: Grid):
+    assert simple_grid._frame is None
+    r = m.SurroundingRectangle(simple_grid)
+    simple_grid.frame = r
+    assert isinstance(simple_grid.frame, m.Difference)
+    assert np.array_equal(
+        simple_grid.frame.get_center(), simple_grid.viewport.clip.get_center()
+    )
+    simple_grid.shift(m.RIGHT)
+    assert np.array_equal(
+        simple_grid.frame.get_center(), simple_grid.viewport.clip.get_center()
+    )
+    simple_grid.scale(0.1)
+    assert np.array_equal(
+        simple_grid.frame.get_center(), simple_grid.viewport.clip.get_center()
+    )
+    simple_grid.scroll(m.UP, 10000)
+    assert np.array_equal(
+        simple_grid.frame.get_center(), simple_grid.viewport.clip.get_center()
+    )
+    assert not np.array_equal(simple_grid.frame.get_center(), simple_grid.get_center())

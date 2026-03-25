@@ -7,7 +7,7 @@ import numpy as np
 from manim.typing import Vector3D, Vector3DLike
 from manim_utils import Stencil
 
-from manim_grid.exceptions import GridShapeError, GridViewportError
+from manim_grid.exceptions import GridFrameError, GridShapeError, GridViewportError
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
@@ -79,7 +79,6 @@ class Cell:
         self.old = self.mob
         self.mob = mob
         self.mob.move_to(self.rect, aligned_edge=alignment).shift(-alignment * margin)
-        self._grid.add(self.mob)
 
 
 class Grid(m.Group):
@@ -389,8 +388,12 @@ class Grid(m.Group):
         return Stencil(clip=clip, wrapped=self.lattice).set_stroke(opacity=0)
 
     @property
-    def frame(self) -> None | m.Difference:
+    def frame(self) -> m.Difference:
         """Return the frame VMobject or None if none has been set yet."""
+        if self._frame is None:
+            raise GridFrameError(
+                "This Grid does not have a frame. Set it via `grid.frame = ...` first."
+            )
         return self._frame
 
     @frame.setter

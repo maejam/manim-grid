@@ -20,3 +20,7 @@ class GridShapeError(GridError):
 
 class GridViewportError(GridError):
     """Raised when an error related to the viewport occurs."""
+
+
+class GridFrameError(GridError):
+    """Raised when an error related to the frame occurs."""
