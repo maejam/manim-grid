@@ -140,10 +140,10 @@ class Grid(m.Group):
 
         Attributes
         ----------
-        frame
+        lattice
             The ``VGroup`` containing the Rectangle objects defining each cell boundary.
             Useful when acting on all rectangles at once:
-            `grid.frame.set_fill(WHITE, opacity=1)`
+            `grid.lattice.set_fill(WHITE, opacity=1)`
         rects
             A proxy giving access to the same Rectangles as a numpy array for greater
             control. For instance, targeting only the first column:
@@ -161,6 +161,7 @@ class Grid(m.Group):
 
         """
         self._viewport: Stencil | None = None
+        self._frame: m.Difference | None = None
         super().__init__(**kwargs)
 
         num_rows, num_cols = len(row_heights), len(col_widths)
@@ -173,7 +174,7 @@ class Grid(m.Group):
         self._col_labels = self._prepare_labels(col_labels, num_cols)
         self._label_mapper = LabelMapper(self._row_labels, self._col_labels)
 
-        self._cells, self.frame = self._prepare_grid(
+        self._cells, self.lattice = self._prepare_grid(
             num_rows, num_cols, row_heights, col_widths, self._buff
         )
 
@@ -313,7 +314,7 @@ class Grid(m.Group):
         col_widths: Sequence[float],
         buff: tuple[float, float],
     ) -> tuple[np.ndarray[tuple[int, int], np.dtype[np.object_]], m.VGroup]:
-        """Create the internal ``Cell`` matrix and the visual frame ``VGroup``.
+        """Create the internal ``Cell`` matrix and the lattice ``VGroup``.
 
         Parameters
         ----------
@@ -340,20 +341,20 @@ class Grid(m.Group):
                 )
                 cells[i, j] = Cell(self, rect=rect)
 
-        frame = m.VGroup(cell.rect for cell in cells.ravel())
-        frame.arrange_in_grid(
+        lattice = m.VGroup(cell.rect for cell in cells.ravel())
+        lattice.arrange_in_grid(
             rows=num_rows,
             cols=num_cols,
             buff=buff,
             aligned_edge=m.UP,
         )
-        return cells, frame
+        return cells, lattice
 
     def add(self, *mobjects: m.Mobject) -> Self:
         """Add mobjects as submobjects.
 
-        This overriden method makes sure the viewport (if any) remains on top and covers
-        the newly added mobjects.
+        This overriden method makes sure the viewport (if any) remains on top and
+        covers the newly added mobjects.
         """
         super().add(*mobjects)
         if self._viewport is not None:
@@ -385,7 +386,40 @@ class Grid(m.Group):
             cell.rect for cell in self._cells[:num_rows, :num_cols].flatten()
         ]
         clip = m.SurroundingRectangle(m.VGroup(visible_area), buff=0)
-        return Stencil(clip=clip, wrapped=self.frame).set_stroke(opacity=0)
+        return Stencil(clip=clip, wrapped=self.lattice).set_stroke(opacity=0)
+
+    @property
+    def frame(self) -> None | m.Difference:
+        """Return the frame VMobject or None if none has been set yet."""
+        return self._frame
+
+    @frame.setter
+    def frame(self, vmobject: m.VMobject | None) -> None:
+        """Set the frame.
+
+        Providing ``None`` will remove any previous frame.
+        Providing a VMobject will compute the difference between the provided VMobject
+        and the grid content. It is the user responsibility to position the frame where
+        it should be.
+        """
+        if vmobject is None:
+            if self._viewport is None and self.frame is not None:
+                self.remove(self.frame)
+            elif self._viewport is not None and self.frame is not None:
+                self.viewport.clip.remove(self.frame)
+        else:
+            if self._viewport is None:
+                # Difference does not work with a VGroup, so we surround the lattice
+                self._frame = m.Difference(
+                    vmobject, m.SurroundingRectangle(self.lattice, buff=0)
+                ).match_style(vmobject)
+                self.add(self._frame)
+            else:
+                self._frame = m.Difference(vmobject, self.viewport.clip).match_style(
+                    vmobject
+                )
+                # add to the clip so that it stays with it when scrolling
+                self.viewport.clip.add(self._frame)
 
     @property
     def has_uniform_rows(self) -> bool:
@@ -464,7 +498,7 @@ class Grid(m.Group):
             buffers.
         """
         one_cell_offset = np.array(
-            [self.frame[0].width, self.frame[0].height, 0.0]
+            [self.lattice[0].width, self.lattice[0].height, 0.0]
         ) + np.array([*self._buff, 0.0])
 
         offset = (

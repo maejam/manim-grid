@@ -38,7 +38,7 @@ def test_cell_insert_mob_updates_old_and_mob(dummy_mob):
 # Grid
 # ----------------------------------------------------------------------
 def test_prepare_grid_shapes(simple_grid):
-    cells, vgroup = simple_grid._cells, simple_grid.frame
+    cells, vgroup = simple_grid._cells, simple_grid.lattice
     assert cells.shape == (2, 3)
     assert all(isinstance(c, Cell) for c in cells.ravel())
     rects = [cell.rect for cell in cells.ravel()]
@@ -254,6 +254,8 @@ def test_grid_has_right_submobjects_after_adding_mob(
     assert simple_grid.mobs[0, 0] is c
     assert c in simple_grid.submobjects
     assert isinstance(simple_grid.submobjects[-1], Stencil)
+    simple_grid.frame = m.Rectangle()
+    assert isinstance(simple_grid.submobjects[-1], Stencil)
 
 
 def test_grid_has_right_submobjects_after_removing_mob(
@@ -266,6 +268,8 @@ def test_grid_has_right_submobjects_after_removing_mob(
     assert simple_grid.olds[0, 0] in simple_grid.submobjects
     assert simple_grid.mobs[0, 0] not in simple_grid.submobjects
     assert simple_grid.mobs[0, 0] is r
+    assert isinstance(simple_grid.submobjects[-1], Stencil)
+    simple_grid.frame = m.Rectangle()
     assert isinstance(simple_grid.submobjects[-1], Stencil)
 
 
@@ -283,6 +287,8 @@ def test_grid_has_right_submobjects_after_adding_group(
     assert c in simple_grid.submobjects
     assert t in simple_grid.submobjects
     assert isinstance(simple_grid.submobjects[-1], Stencil)
+    simple_grid.frame = m.Rectangle()
+    assert isinstance(simple_grid.submobjects[-1], Stencil)
 
 
 def test_grid_has_right_submobjects_after_removing_group(
@@ -299,4 +305,6 @@ def test_grid_has_right_submobjects_after_removing_group(
     assert r not in simple_grid.submobjects
     assert c not in simple_grid.submobjects
     assert t in simple_grid.submobjects
+    assert isinstance(simple_grid.submobjects[-1], Stencil)
+    simple_grid.frame = m.Rectangle()
     assert isinstance(simple_grid.submobjects[-1], Stencil)
