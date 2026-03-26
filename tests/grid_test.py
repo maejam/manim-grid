@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from manim_utils import Stencil
 
-from manim_grid.exceptions import GridFrameError, GridShapeError, GridViewportError
+from manim_grid.exceptions import GridFrameError, GridShapeError, GridStencilError
 from manim_grid.grid import Cell, EmptyMobject, Grid, Tags
 
 
@@ -188,9 +188,9 @@ def test_normalize_margin_invalid_input(margin):
 # ----------------------------------------------------------------------
 # Grid - scroll
 # ----------------------------------------------------------------------
-def test_scrolling_without_a_viewport_raises():
+def test_scrolling_without_a_stencil_raises():
     g = Grid([1, 1], [1, 1, 1])
-    with pytest.raises(GridViewportError, match="A grid without a viewport"):
+    with pytest.raises(GridStencilError, match="A grid without a stencil"):
         g.scroll(m.DOWN, 1)
 
 
@@ -280,7 +280,7 @@ def test_accesing_inexistent_frame_raises(simple_grid: Grid):
         assert simple_grid.frame
 
 
-def test_frame_without_viewport():
+def test_frame_without_stencil():
     g = Grid([1, 1], [1, 1, 1])
     assert g._frame is None
     r = m.SurroundingRectangle(g)
@@ -291,27 +291,33 @@ def test_frame_without_viewport():
     assert np.array_equal(g.frame.get_center(), g.get_center())
     g.scale(0.1)
     assert np.array_equal(g.frame.get_center(), g.get_center())
-    assert g.frame in g.submobjects
+    assert g.frame in g.get_family()
+    g.frame = None
+    assert g.frame not in g.get_family()
 
 
-def test_frame_with_viewport(simple_grid: Grid):
+def test_frame_with_stencil(simple_grid: Grid):
     assert simple_grid._frame is None
     r = m.SurroundingRectangle(simple_grid)
     simple_grid.frame = r
     assert isinstance(simple_grid.frame, m.Difference)
     assert np.array_equal(
-        simple_grid.frame.get_center(), simple_grid.viewport.clip.get_center()
+        simple_grid.frame.get_center(), simple_grid.stencil.clip.get_center()
     )
     simple_grid.shift(m.RIGHT)
     assert np.array_equal(
-        simple_grid.frame.get_center(), simple_grid.viewport.clip.get_center()
+        simple_grid.frame.get_center(), simple_grid.stencil.clip.get_center()
     )
     simple_grid.scale(0.1)
     assert np.array_equal(
-        simple_grid.frame.get_center(), simple_grid.viewport.clip.get_center()
+        simple_grid.frame.get_center(), simple_grid.stencil.clip.get_center()
     )
     simple_grid.scroll(m.UP, 10000)
     assert np.array_equal(
-        simple_grid.frame.get_center(), simple_grid.viewport.clip.get_center()
+        simple_grid.frame.get_center(), simple_grid.stencil.clip.get_center()
     )
     assert not np.array_equal(simple_grid.frame.get_center(), simple_grid.get_center())
+
+    assert simple_grid.frame in simple_grid.get_family()
+    simple_grid.frame = None
+    assert simple_grid.frame not in simple_grid.get_family()

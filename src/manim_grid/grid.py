@@ -7,7 +7,7 @@ import numpy as np
 from manim.typing import Vector3D, Vector3DLike
 from manim_utils import Stencil
 
-from manim_grid.exceptions import GridFrameError, GridShapeError, GridViewportError
+from manim_grid.exceptions import GridFrameError, GridShapeError, GridStencilError
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
@@ -101,7 +101,7 @@ class Grid(m.Group):
 
         * creating the underlying ``np.ndarray`` of ``Cell`` instances,
         * arranging the rectangle placeholders in a Manim ``VGroup``,
-        * adding a ``viewport`` in the form of a :class:`manim_utils.Stencil` object
+        * adding a ``stencil`` in the form of a :class:`manim_utils.Stencil` object
           if at least one of ``num_visible_rows`` or ``num_visible_cols`` is specified.
         * exposing convenient proxy objects (``mobs``, ``olds``, ...) that forward
           attribute access to the underlying cells.
@@ -130,8 +130,8 @@ class Grid(m.Group):
         num_visible_rows
             The number of rows that should be visible. A :class:`manim_utils.Stencil`
             will be used to cover the hidden rows. This stencil is accessible through
-            the attribute `grid.viewport`. If none of `num_visible_rows` and
-            `num_visible_cols` is defined, the viewport will not be created.
+            the attribute `grid.stencil`. If none of `num_visible_rows` and
+            `num_visible_cols` is defined, the stencil will not be created.
         num_visible_cols
             Similar to `num_visible_rows` for columns.
         **kwargs
@@ -159,7 +159,7 @@ class Grid(m.Group):
             detailed instructions.
 
         """
-        self._viewport: Stencil | None = None
+        self._stencil: Stencil | None = None
         self._frame: m.Difference | None = None
         super().__init__(**kwargs)
 
@@ -181,10 +181,18 @@ class Grid(m.Group):
         self._num_visible_cols = num_visible_cols or num_cols
 
         if num_visible_rows is not None or num_visible_cols is not None:
-            self._viewport = self._create_viewport(
+            self._stencil = self._create_stencil(
                 self._num_visible_rows, self._num_visible_cols
             )
-            self.add(self._viewport)
+            self.viewport = self._stencil.clip
+            self.add(self._stencil)
+        else:
+            # some manim methods/classes (e.g. Difference) don't work with VGroup,
+            # so we surround the lattice
+            self.viewport = m.SurroundingRectangle(self.lattice, buff=0).set_stroke(
+                opacity=0
+            )
+            self.add(self.viewport)
 
         self.rects = RectsProxy(self)
         self.mobs = MobsProxy(self, margin=self._margin)
@@ -352,17 +360,17 @@ class Grid(m.Group):
     def add(self, *mobjects: m.Mobject) -> Self:
         """Add mobjects as submobjects.
 
-        This overriden method makes sure the viewport (if any) remains on top and
+        This overriden method makes sure the stencil (if any) remains on top and
         covers the newly added mobjects.
         """
         super().add(*mobjects)
-        if self._viewport is not None:
-            super().add(self.viewport)
+        if self._stencil is not None:
+            super().add(self.stencil)
         return self
 
     @property
-    def viewport(self) -> Stencil:
-        """A property giving access to the viewport if it exist.
+    def stencil(self) -> Stencil:
+        """A property giving access to the stencil if it exists.
 
         Returns
         -------
@@ -370,16 +378,16 @@ class Grid(m.Group):
 
         Raises
         ------
-        GridViewportError if it does not exist.
+        GridStencilError if it does not exist.
         """
-        if self._viewport is None:
-            raise GridViewportError(
-                "This Grid does not have a viewport. Define `num_visible_rows` "
+        if self._stencil is None:
+            raise GridStencilError(
+                "This Grid does not have a stencil. Define `num_visible_rows` "
                 "and/or `num_visible_cols` to generate one."
             )
-        return self._viewport
+        return self._stencil
 
-    def _create_viewport(self, num_rows: int, num_cols: int) -> Stencil:
+    def _create_stencil(self, num_rows: int, num_cols: int) -> Stencil:
         """Create the stencil to hide cells that should not be visible."""
         visible_area = [
             cell.rect for cell in self._cells[:num_rows, :num_cols].flatten()
@@ -402,27 +410,16 @@ class Grid(m.Group):
 
         Providing ``None`` will remove any previous frame.
         Providing a VMobject will compute the difference between the provided VMobject
-        and the grid content. It is the user responsibility to position the frame where
+        and the grid viewport. It is the user responsibility to position the frame where
         it should be.
         """
         if vmobject is None:
-            if self._viewport is None and self.frame is not None:
-                self.remove(self.frame)
-            elif self._viewport is not None and self.frame is not None:
-                self.viewport.clip.remove(self.frame)
+            if self.frame is not None:
+                self.viewport.remove(self.frame)
         else:
-            if self._viewport is None:
-                # Difference does not work with a VGroup, so we surround the lattice
-                self._frame = m.Difference(
-                    vmobject, m.SurroundingRectangle(self.lattice, buff=0)
-                ).match_style(vmobject)
-                self.add(self._frame)
-            else:
-                self._frame = m.Difference(vmobject, self.viewport.clip).match_style(
-                    vmobject
-                )
-                # add to the clip so that it stays with it when scrolling
-                self.viewport.clip.add(self._frame)
+            self._frame = m.Difference(vmobject, self.viewport).match_style(vmobject)
+            # add to the clip so that it stays with it when scrolling
+            self.viewport.add(self._frame)
 
     @property
     def has_uniform_rows(self) -> bool:
@@ -452,15 +449,15 @@ class Grid(m.Group):
 
         Raises
         ------
-        GridViewportError
-            If no viewport is defined.
+        GridStencilError
+            If no stencil is defined.
         GridShapeError
             If the grid does not have uniform row heights for vertical scrolling or
             uniform column widths for horizontal scrolling.
         """
-        if self._viewport is None:
-            raise GridViewportError(
-                "A grid without a viewport cannot be scrolled. "
+        if self._stencil is None:
+            raise GridStencilError(
+                "A grid without a stencil cannot be scrolled. "
                 "Define `num_visible_rows` or `num_visible_cols` or both."
             )
 
@@ -475,11 +472,11 @@ class Grid(m.Group):
                 "In order to scroll vertically, the grid must have uniform row heights."
             )
 
-        self.viewport.is_clip_static = True
+        self.stencil.is_clip_static = True
         offset = self._compute_scroll_offset(direction, step)
         self.shift(offset)
-        self.viewport.is_clip_static = False
-        self.viewport.update()
+        self.stencil.is_clip_static = False
+        self.stencil.update()
         return self
 
     def _compute_scroll_offset(

@@ -18,8 +18,8 @@ class GridShapeError(GridError):
     """Raised when a Grid does not have the right shape."""
 
 
-class GridViewportError(GridError):
-    """Raised when an error related to the viewport occurs."""
+class GridStencilError(GridError):
+    """Raised when an error related to the stencil occurs."""
 
 
 class GridFrameError(GridError):
