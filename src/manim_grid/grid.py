@@ -479,6 +479,7 @@ class Grid(m.Group):
         offset = self._compute_scroll_offset(direction, step)
         self.shift(offset)
         self.viewport.is_clip_static = False
+        self.viewport.update()
         return self
 
     def _compute_scroll_offset(
