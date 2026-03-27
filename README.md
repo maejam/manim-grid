@@ -1,21 +1,30 @@
 # 📐 `manim-grid` - A Simple Grid Container to ease Mobjects positioning and referencing  
 
-`manim-grid` is a lightweight [Manim](https://www.manim.community/) plugin that creates a rectangular grid of cells. It lets you place any `Mobject` into a cell by using natural indexing and handles alignment, margins, and automatic positioning for you. As it is based on [NumPy](https://numpy.org/), the full power of NumPy indexing is available.  
+`manim-grid` is a lightweight [Manim](https://www.manim.community/) plugin that creates a rectangular grid of cells. It lets you place any `Mobject` into a cell by using natural indexing and handles alignment, margins, and automatic positioning for you. As it is based on [NumPy](https://numpy.org/), the full power of NumPy indexing is made available.  
 
 > **Why this plugin?**  
-> It is born from an attempt to build a better `Code` Mobject, more flexible and easier to work with. Manim’s built‑in `arrange_in_grid` arranges submojects but it doesn’t give you a persistent “cell” abstraction you can address later. `Grid` fills that gap: each cell is a slot in which you can store other mobjects, retrieve them later, and re-assign on the fly.  
+> It is born from an attempt to build a better `Code` Mobject, more flexible and easier to work with. This goal quickly turned into a flexible multi-purpose tool.
+
+> **How does it differ from existing manim tools**
+> Manim’s built‑in `arrange_in_grid` arranges submojects but it doesn’t give you a persistent “cell” abstraction you can address later.
+> The `Table` mobject is great but lacks the dynamic behaviour I needed and is mostly a visual tool.
+> The `Paragraph` and `Code` mobjects suffer from the same lack of dynamism and flexibility.
+
+`Grid` fills that gap: it is a flexible, polyvalent and dynamic tool that can be used as a "ruler" to position mobjects in a scene, retrieve them later, and re-assign them on the fly. It does not replace the tools mentioned above but rather offers an alternative way to build and think about your scenes.
+
 ---  
 
 ## Table of Contents  
 
 - [Features](#features)  
 - [Installation](#installation)  
-- [Quick Start](#quick-start)  
-- [Core Concepts](#core-concepts)  
-  - [Grid & Cell](#grid-&-cell)  
-  - [Proxies (`mobs`, `olds`, `tags`)](#proxies)  
-  - [Masking](#masking)  
-- [More to come](#more-to-come)  
+- [Getting Started](#getting-started)  
+- [More Examples](#more-examples)
+- [Internals](#internals)  
+  - [Cell](#cell)  
+  - [Proxies (`mobs`, `olds`, `rects`, `tags`)](#proxies)  
+  - [Tags](#tags)
+  - [Stencil Viewport and Scrolling](#stencil-viewport-and-scrolling)
 
 ---  
 
@@ -24,16 +33,19 @@
 - **Declarative geometry** - specify per-row heights and per-column widths.  
 - **Automatic layout** - cells are arranged with `arrange_in_grid`.  
 - **Margin & buffer control** - fine-tune spacing between cells and padding inside cells.  
-- **Pythonic NumPy-based indexing** - `grid.mobs[...]` returns the stored `Mobject`(s); `grid.mobs[...] = obj` places mobject(s). Negative indices, slices, masks are allowed and behave like normal NumPy arrays.  
-- **String labels** - string identifiers can be added to rows and columns to make indexing more expressive.  
-- **Access previous Mobjects** - `grid.olds[...]` returns the previous mobject(s) in a cell or a group of cells. Useful for animations.  
-- **Alignment vectors** - align a `Mobject` to any edge/corner in a cell (`grid[row, col, UP]`, `grid[row, :, DL]`, etc.).  
+- **Pythonic NumPy-based indexing** - the full power of NumPy indexing is supported: negative indices, slices, masks...
+- **String labels** - string identifiers can be added to rows and columns to make indexing even more expressive.  
+- **Alignment vectors** - align `Mobjects` to any edge/corner in cells.  
+- **Powerful management of cell attributes** - access any attribute for a single cell or in bulk transparently.  
 - **Per-cell metadata** - add key/value tags to cells, individually or in bulk.  
+- **Scrolling** - the `scroll` method lets you scroll the grid in any direction with a smooth animation.
+- **Frame** - add a custom frame around the grid that plays well with scrolling.
 - **Fully typed** - for better library and end-user code quality.  
 
 ---  
 
 ## Installation  
+
 For now there is no Pypi package. Install by adding to your `manim` project:  
 - create the project if necessary:  
 ```bash
@@ -48,171 +60,129 @@ Requires `Python >= 3.11, < 3.14` and `manim >= 0.19`
 
 ---  
 
-## Quick Start  
+## Getting Started  
+
+> [!NOTE]
+> It is necessary to be familiar with (NumPy indexing)[https://numpy.org/doc/stable/user/basics.indexing.html] to fully benefit from this plugin.  
 
 ```python
 from manim import *
 from manim_grid import Grid
 
 
-class QuickStart(Scene):
+class GettingStarted(Scene):
     def construct(self):
         # Create a 2×3 grid (rows, columns)
         grid = Grid(
             row_heights=[2, 2],
             col_widths=[2, 2, 2],
-            row_labels=["top", "bottom"],
-            col_labels=["left", "mid", "right"],
         )
+        self.add(grid)
+        # Show the lattice of Rectangles making the grid cells
+        grid.lattice.set_stroke(opacity=1)
 
-        # Place mobjects in the top row, aligned to the upper edge.
+        # Place mobjects in the top row, aligned to the upper edge
         # The Mobjects are deliberatly not added to the scene (nor are the previous
-        # occupants of that cells, if any, removed) to allow for greater control
+        # occupants of those cells, if any, removed) to allow for greater control
         # over animations.
-        grid.mobs["top", :, UP] = [
+        grid.mobs[0, :, UP] = [
             Circle(radius=0.5, color=BLUE),
             Dot(color=GREEN),
             Rectangle(height=0.3, width=0.5),
         ]
-        self.add(grid.mobs["top"])
+        grid.add(grid.mobs[0])
 
-        # Place a square in the top-left cell, centered (default).
-        grid.mobs["top", "left"] = Square(side_length=0.5, color=RED)
+        # Place a square in the top-left cell, centered (default)
+        # It replaces the Circle in that cell
+        # The Circle is still accessible via grid.olds[0, 0]
+        grid.mobs[0, 0] = Square(side_length=0.5, color=RED)
 
         # Transform the circle into the square.
-        self.play(
-            ReplacementTransform(grid.olds["top", "left"], grid.mobs["top", "left"])
-        )
-
-        # Tag the whole top row for later reference.
-        grid.tags["top"].to_remove = True
-
-        # Show the grid.
-        self.add(grid)
-        grid.grid.set_stroke(opacity=0.5)
-        self.wait()
-
-        # Remove all mobjects in the tagged cells using a mask.
-        # The mobjects are still in the cells but removed from the scene.
-        mask = grid.tags.mask(to_remove=True)
-        self.remove(*grid.mobs[mask])
-        self.wait()
-```
+        self.play(ReplacementTransform(grid.olds[0, 0], grid.mobs[0, 0]))
+```  
 
 ---  
 
-## Core concepts  
+## More Examples  
 
-### Grid & Cell  
+See the following examples in the `/examples` directory:
+1. [Getting Started](examples/01-getting_started.py)
+2. [Buffers and Margins](examples/02-buffers_and_margins.py)
+3. [Labels](examples/03-labels.py)
+4. [Scrolling](examples/04-scrolling.py)
+5. [Tagging](examples/05-tagging.py)
+6. [Masking](examples/06-masking.py)
+7. [Frame](examples/07-frame.py)
+
+---  
+
+## Internals  
+
+To understand how to best interact with the Grid and why things go wrong sometimes, it is necessary to know more about its building blocks. This is only a general overview; for a deep dive, see the in-code documentation and the code itself.
+
+### Cell  
 The **Grid** class creates a two-dimensional layout of **Cell** objects.  
 Each `Cell` holds:  
-- `rect`: a `manim.Rectangle` that defines the visual bounds of the cell.  
-- `mob`: the current `manim.Mobject` displayed in the cell (defaults to an `EmptyMobject` placeholder).  
+- `rect`: a `Rectangle` that defines the visual bounds of the cell.  
+- `mob`: the current `Mobject` contained in the cell (defaults to an `EmptyMobject` placeholder).  
 - `old`: the previous `Mobject` that occupied the cell, useful for transition animations.  
 - `tags`: a dictionary-like `Tags` instance for arbitrary user-defined metadata.  
 
-The grid takes sequences of row heights and column widths, optional buffers (between cells), and optional margins (inside cells).  
-
-```python
-from manim_grid import Grid
-
-# Create a 2x3 grid with uniform cell sizes.
-grid = Grid(
-    row_heights=[2, 2],
-    col_widths=[3, 3, 3],
-    buff=0.2,
-    margin=0.1,
-)
-```
-- `buff` and `margin` can be scalar values, in which case the same value is used for the horizontal and vertical dimensions. Alternatively, a 2-tuple `(horizontal, vertical)` can be specified.  
-- `row_labels` and `col_labels` sequences can be passed as well (see `Quick Start`). If so, they must be the same length as `row_heights` and `col_widths` respectively. If omitted, 1-based string numeric labels will be automatically created (e.g. `grid.mobs[0, 0]` is equivalent to `grid.mobs["1", "1"]`).  
-
 ### Proxies  
+The Grid class provides four proxy objects that give convenient, NumPy-style access to the underlying cell attributes described above. These proxies return as outputs and take in as inputs different types of objects whether you are targeting individual cells or multiple cells at the same time. e.g.: `grid.mobs[0,0]` returns a Mobject, while `grid.mobs[:]` returns a VGroup of all mobjects contained in the grid, in row-major order. The table below summarizes the expected inputs and the returned outputs for each proxy (single cell/bulk):
 
-Manim‑Grid provides three proxy objects that give convenient, NumPy-style access to the underlying cell attributes.  
-
-| Proxy       | Purpose                                    | Readable (`__getitem__`)     | Writeable (`__setitem__`)           |
-|-------------|--------------------------------------------|------------------------------|-------------------------------------|
-| `grid.mobs` | Access or assign Mobject(s) to cell(s).    | ✅ Output: Mobject/VGroup    | ✅ Input: Mobject/Sequence[Mobject] |
-| `grid.olds` | Retrieve the previously stored Mobject(s). | ✅ Output: Mobject/VGroup    | ❌                                  |
-| `grid.tags` | Manipulate metadata via the `Tags` class.  | ✅ Output: STS/BTS objects*  | ✅ Input: Any or mapping            |
+| Proxy        | Purpose                                    | Readable (`__getitem__`)     | Writeable (`__setitem__`)           |
+|--------------|--------------------------------------------|------------------------------|-------------------------------------|
+| `grid.mobs`  | Access or assign Mobject(s) to cell(s).    | ✅ Output: Mobject/VGroup    | ✅ Input: Mobject/Sequence[Mobject] |
+| `grid.olds`  | Retrieve the previously stored Mobject(s). | ✅ Output: Mobject/VGroup    | ❌                                  |
+| `grid.rects` | Access the lattice Rectangles.             | ✅ Output: Rectangle/VGroup  | ❌                                  |
+| `grid.tags`  | Manipulate metadata via the `Tags` class.  | ✅ Output: STS/BTS objects*  | ✅ Input: Tags or mapping           |
 
 *<sub>STS/BTS: ScalarTagsSelection/BulkTagsSelection objects returned when indexing the tags proxy (i.e. `grid.tags[...]`).</sub>  
-The `Output` and `Input` types correspond to `single cell/bulk` except for `tags.__setitem__` (see examples below).  
 
+### Tags  
+Each `Cell` holds a `Tags` instance in their `tags` attribute. This class acts as a python dictionary with dot attribute access.
+Moreover, the `ScalarTagsSelection` or `BulkTagSelection` instance returned by `TagsProxy.__getitem__` define the following methods (directly or through their base class `_TagsSelectionBase`):
 
-#### Example: Adding and retrieving Mobjects  
+| Method        | Purpose                                                          | Example                            | 
+|---------------|------------------------------------------------------------------|------------------------------------|
+| `update`      | Updates the `Tags` instance(s) similar to `dict.update`          | `grid.tags[...].update(foo="bar")` |
+| `remove`      | Removes the provided keys from the `Tags` instance(s)            | `grid.tags[...].remove("foo")`     |
+| `clear`       | Removes all keys from the `Tags` instance(s)                     | `grid.tags[...].clear()`           |
+| `__getattr__` | Enables requesting the value(s) associated with the provided key | `grid.tags[...].foo`               |
+| `__setattr__` | Enables setting the value(s) associated with the key             | `grid.tags[...].foo = "bar"`       |
+| `__delattr__` | Enables deleting the provided key from the `Tags` instance(s)    | `del grid.tags[...].foo`           |
+
+`ScalarTagsSelection.__setitem__` and `BulkTagSelection.__setitem__` on the other hand allow to completely replace the `Tags` instance(s). It accepts a new `Tags` instance (a copy will be set for each `Cell` in the bulk case) or a mapping (that will be internally converted into a `Tags` instance): `grid.tags[...] = Tags(foo="bar", baz=42)` and `grid.tags[...] = {"foo": "bar", "baz": 42}` or equivalent.
+
+### Stencil Viewport and Scrolling  
+When a `Grid` is instantiated with `num_visible_rows` and/or `num_visible_cols`, a [Stencil](https://github.com/maejam/manim-utils) instance is added to the grid and is stored in the `grid._stencil` attribute accesible via the `grid.stencil` property. Its purpose is to hide cells that should not be visible. It is a `manim.Difference` object between the whole grid and a `SurroundingRectangle` around the visible cells. The stencil is painted the same color as the scene background to give the impression that only the viewport is added to the screen. The stencil is always transformed with the grid and stays in sync with it.
+
+The scrolling animation is actually the whole grid moving the opposite direction (scrolling DOWN is shifting the grid UP), while the viewport stays in place and the `Difference` is recomputed every frame with an updater. This is why scrolling past the last row/column gives weird artifacts: this is the result of the `Difference` between a `Mobject` and another one that does not entirely intersect it.
+
+The following snippet shows how the `stencil` (YELLOW) covers all the hidden cells, while the `viewport` (RED) acts like a window on the visible cells. After scrolling DOWN (grid2 on the right), the whole grid is shifted UP along with the stencil, while the viewport stays in place:
 
 ```python
-from manim import Circle, UP
+from manim import *
 
-# Place a Circle in row 0, column 1, aligned to the top edge of the cell.
-grid.mobs[0, 1, UP] = Circle(radius=0.5)
+from manim_grid import Grid
 
-# Bulk assign Mobjects to the first column, centered.
-grid.mobs[:, 0] = [Dot(color=RED), Dot(color=BLUE)]
 
-# Retrieve all Mobjects in the grid. Returns a VGroup where Mobjects are ordered row-major.
-all_mobs = grid.mobs[:]
-print(list(all_mobs)) # [Dot, Circle, EmptyMobject, Dot, EmptyMobject, EmptyMobject]
-```  
-
-#### Example: Reading old objects  
-```python
-
-# olds are read-only and automatically managed by the library.
-grid.mobs[0, 1] = Square() # Replaces the Circle which becomes the `old` mobject in that cell.
-old_mobs = grid.olds[:]
-print(list(old_mobs)) # [EmptyMobject, Circle, EmptyMobject, EmptyMobject, EmptyMobject, EmptyMobject]
-
-```  
-
-#### Example: Tagging cells  
-```python
-
-# Set a custom tag on cell(s). Here a single cell.
-grid.tags[0, 1].foo = "bar"
-
-# Bulk-update cell(s). Here a whole row.
-grid.tags[0].update(baz=True, qux=42)
-
-# Retrieve a tag array for cell(s). Here the entire grid.
-baz_tags = grid.tags[:].baz   # Returns a NumPy ndarray with the `baz` value for each cell
-print(baz_tags) # [[True True True] [<MISSING> <MISSING> <MISSING>]]
-
-# Removing a single tag on cell(s).
-grid.tags[0, 0].remove("baz")
-
-# Clearing all the tags from cell(s).
-grid.tags[0, 1].clear()
-
-# Replacing all the tags on cell(s). Accepts a `Tags` instance or a Mapping.
-grid.tags[1] = {"baz": False, "foo": 24}
+class Stencil(Scene):
+    def construct(self):
+        grid = Grid(
+            row_heights=[0.5] * 10,
+            col_widths=[2] * 2,
+            num_visible_rows=5,
+        )
+        self.add(grid.shift(LEFT))
+        grid.mobs[:] = [Text(str(n), font_size=16) for n in range(20)]
+        grid.add(grid.mobs[:])
+        grid.lattice.set_stroke(opacity=1)
+        grid.stencil.set_fill(YELLOW)
+        grid.viewport.set_stroke(RED, opacity=1)
+        grid2 = grid.copy()
+        self.add(grid2.next_to(grid).scroll(DOWN, 3))
 ```
 
-### Masking  
-
-All proxies support a .mask() method that builds a Boolean mask based on a predicate or attribute filters. Both predicate and filters must be True for a cell to be selected. If a cell is missing a filter attribute, it will not be selected.  
-
-```python
-
-# Select all cells whose current mob is a Circle.
-circle_mask = grid.mobs.mask(predicate=lambda mob: isinstance(mob, Circle))
-
-# Apply a tag only to those cells.
-grid.tags[circle_mask].update(shape="circle")
-
-# Select all cells where the `old` mob is a RED Square with opacity 1.
-red_mask = grid.olds.mask(predicate=lambda old: isinstance(old, Square), color=RED, opacity=1)
-
-# Remove all the selected old mobs from the scene.
-self.remove(*grid.olds[red_mask])
-```
-
----  
-
-## More to come  
-
-- Specialized Grids for text and code.  
-
-Feedback, contributions and ideas are welcomed!  
+[stencil](assets/stencil.png)
