@@ -63,7 +63,9 @@ Requires `Python >= 3.11, < 3.14` and `manim >= 0.19`
 ## Getting Started  
 
 > [!NOTE]
-> It is necessary to be familiar with (NumPy indexing)[https://numpy.org/doc/stable/user/basics.indexing.html] to fully benefit from this plugin.  
+> It is necessary to be familiar with [NumPy indexing](https://numpy.org/doc/stable/user/basics.indexing.html) to fully benefit from this plugin.
+
+https://github.com/user-attachments/assets/f1364a89-95dc-4109-bbc1-510232f87ecc  
 
 ```python
 from manim import *
@@ -160,7 +162,9 @@ When a `Grid` is instantiated with `num_visible_rows` and/or `num_visible_cols`,
 
 The scrolling animation is actually the whole grid moving the opposite direction (scrolling DOWN is shifting the grid UP), while the viewport stays in place and the `Difference` is recomputed every frame with an updater. This is why scrolling past the last row/column gives weird artifacts: this is the result of the `Difference` between a `Mobject` and another one that does not entirely intersect it.
 
-The following snippet shows how the `stencil` (YELLOW) covers all the hidden cells, while the `viewport` (RED) acts like a window on the visible cells. After scrolling DOWN (grid2 on the right), the whole grid is shifted UP along with the stencil, while the viewport stays in place:
+The following snippet shows how the `stencil` (YELLOW) covers all the hidden cells, while the `viewport` (RED) acts like a window on the visible cells. After scrolling DOWN (grid2 on the right), the whole grid is shifted UP along with the stencil, while the viewport stays in place:  
+
+<img width="854" height="480" alt="stencil" src="https://github.com/user-attachments/assets/37f1096b-970a-4167-82e6-c52990fab31e" />  
 
 ```python
 from manim import *
@@ -184,5 +188,3 @@ class Stencil(Scene):
         grid2 = grid.copy()
         self.add(grid2.next_to(grid).scroll(DOWN, 3))
 ```
-
-[stencil](assets/stencil.png)
