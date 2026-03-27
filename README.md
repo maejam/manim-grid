@@ -115,6 +115,7 @@ See the following examples in the `/examples` directory:
 5. [Tagging](examples/05-tagging.py)
 6. [Masking](examples/06-masking.py)
 7. [Frame](examples/07-frame.py)
+8. [Alternative Constructors](examples/08-alternative_constructors.py)
 
 ---  
 

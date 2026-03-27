@@ -199,6 +199,53 @@ class Grid(m.Group):
         self.olds = OldsProxy(self)
         self.tags = TagsProxy(self)
 
+    @classmethod
+    def fullscreen(cls, num_rows: int, num_cols: int, **kwargs: Any) -> "Grid":
+        """Alternative constructor to build a fullscreen Grid.
+
+        The generated Grid will cover the whole scene frame and will have uniform row
+        heights and column widths.
+
+
+        Parameters
+        ----------
+        num_rows
+            The desired number of rows.
+        num_cols
+            The desired number of columns.
+        **kwargs
+            Keyword arguments forwarded to `Grid.__init__`.
+        """
+        num_rows = int(num_rows)
+        num_cols = int(num_cols)
+        if num_rows < 1 or num_cols < 1:
+            raise GridShapeError("A Grid should have at least 1 row and 1 column.")
+
+        frame_h = m.config.frame_height
+        frame_w = m.config.frame_width
+        buff_tuple = (
+            cls._normalize_buff(kwargs["buff"]) if "buff" in kwargs else (0.0, 0.0)
+        )
+
+        if buff_tuple[1] * (num_rows - 1) > frame_h:
+            raise GridShapeError(
+                f"The provided vertical buffer ({buff_tuple[1]}) is too large to fit "
+                f"on the screen with {num_rows} rows. "
+                f"It should be at most {int(frame_h / (num_rows - 1) * 100) / 100}."
+            )
+        if buff_tuple[0] * (num_cols - 1) > frame_w:
+            raise GridShapeError(
+                f"The provided horizontal buffer ({buff_tuple[0]}) is too large to fit "
+                f"on the screen with {num_cols} columns. "
+                f"It should be at most {int(frame_w / (num_cols - 1) * 100) / 100}."
+            )
+
+        row_height = (frame_h - (num_rows - 1) * buff_tuple[1]) / num_rows
+        col_width = (frame_w - (num_cols - 1) * buff_tuple[0]) / num_cols
+
+        grid = Grid([row_height] * num_rows, [col_width] * num_cols, **kwargs)
+        return grid
+
     @staticmethod
     def _normalize_buff(buff: float | tuple[float, float]) -> tuple[float, float]:
         """Convert ``buff`` to a 2-tuple ``(horizontal, vertical)``.

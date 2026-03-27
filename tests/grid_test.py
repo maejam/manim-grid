@@ -11,7 +11,7 @@ from manim_grid.grid import Cell, EmptyMobject, Grid, Tags
 # Cell
 # ----------------------------------------------------------------------
 def test_cell_initial_state():
-    cell = Cell(Grid([], []), rect=m.Rectangle())
+    cell = Cell(Grid([1], [1]), rect=m.Rectangle())
 
     assert isinstance(cell.mob, EmptyMobject)
     assert isinstance(cell.old, EmptyMobject)
@@ -19,7 +19,7 @@ def test_cell_initial_state():
 
 
 def test_cell_insert_mob_updates_old_and_mob(dummy_mob):
-    cell = Cell(Grid([], []), rect=m.Rectangle())
+    cell = Cell(Grid([1], [1]), rect=m.Rectangle())
     default = cell.mob
 
     first = dummy_mob.copy()
@@ -43,6 +43,35 @@ def test_prepare_grid_shapes(simple_grid):
     assert all(isinstance(c, Cell) for c in cells.ravel())
     rects = [cell.rect for cell in cells.ravel()]
     assert list(vgroup) == rects
+
+
+# ----------------------------------------------------------------------
+# Grid - alternative constructors
+# ----------------------------------------------------------------------
+@pytest.mark.parametrize(("num_rows", "num_cols"), [(1, 1), (1, 2), (10, 10)])
+def test_fullscreen_grid_without_buffers(num_rows, num_cols):
+    grid = Grid.fullscreen(num_rows, num_cols)
+    assert sum(grid._row_heights) == pytest.approx(m.config.frame_height)
+    assert sum(grid._col_widths) == pytest.approx(m.config.frame_width)
+
+
+@pytest.mark.parametrize(
+    ("num_rows", "num_cols", "buff"), [(1, 1, 0), (1, 2, 1), (10, 10, (1, 0.2))]
+)
+def test_fullscreen_grid_with_buffers(num_rows, num_cols, buff):
+    grid = Grid.fullscreen(num_rows, num_cols, buff=buff)
+    assert (
+        sum(grid._row_heights) + grid._buff[1] * (num_rows - 1) == m.config.frame_height
+    )
+    assert (
+        sum(grid._col_widths) + grid._buff[0] * (num_cols - 1) == m.config.frame_width
+    )
+
+
+@pytest.mark.parametrize(("num_rows", "num_cols"), [(0, 1), (1, -2)])
+def test_fullscreen_grid_with_invalid_num_rows_cols_raises(num_rows, num_cols):
+    with pytest.raises(GridShapeError, match="A Grid should have at least 1 row"):
+        grid = Grid.fullscreen(num_rows, num_cols)
 
 
 # ----------------------------------------------------------------------
