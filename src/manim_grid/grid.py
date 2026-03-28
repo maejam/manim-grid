@@ -1,4 +1,5 @@
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Literal, Self
 
@@ -7,7 +8,12 @@ import numpy as np
 from manim.typing import Vector3D, Vector3DLike
 from manim_utils import Stencil
 
-from manim_grid.exceptions import GridFrameError, GridShapeError, GridStencilError
+from manim_grid.exceptions import (
+    GridError,
+    GridFrameError,
+    GridShapeError,
+    GridStencilError,
+)
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
@@ -184,15 +190,15 @@ class Grid(m.Group):
             self._stencil = self._create_stencil(
                 self._num_visible_rows, self._num_visible_cols
             )
-            self.viewport = self._stencil.clip
-            self.add(self._stencil)
+            self.viewport = self._stencil.clip.copy()
+            super().add(self._stencil)
         else:
             # some manim methods/classes (e.g. Difference) don't work with VGroup,
             # so we surround the lattice
             self.viewport = m.SurroundingRectangle(self.lattice, buff=0).set_stroke(
                 opacity=0
             )
-            self.add(self.viewport)
+        super().add(self.viewport)
 
         self.rects = RectsProxy(self)
         self.mobs = MobsProxy(self, margin=self._margin)
@@ -407,12 +413,17 @@ class Grid(m.Group):
     def add(self, *mobjects: m.Mobject) -> Self:
         """Add mobjects as submobjects.
 
-        This overriden method makes sure the stencil (if any) remains on top and
-        covers the newly added mobjects.
+        This overriden method makes sure the right order of submobjects is preserved.
+        The stencil should cover the newly added mobjects, the frame should cover the
+        stencil and finally the viewport should be last.
         """
         super().add(*mobjects)
         if self._stencil is not None:
             super().add(self.stencil)
+        if self._frame is not None:
+            super().add(self.frame)
+        if hasattr(self, "viewport"):
+            super().add(self.viewport)
         return self
 
     @property
@@ -444,7 +455,13 @@ class Grid(m.Group):
 
     @property
     def frame(self) -> m.Difference:
-        """Return the frame VMobject or None if none has been set yet."""
+        """Return the frame VMobject.
+
+        Raises
+        ------
+        GridFrameError
+            If the frame does not exist.
+        """
         if self._frame is None:
             raise GridFrameError(
                 "This Grid does not have a frame. Set it via `grid.frame = ...` first."
@@ -462,11 +479,10 @@ class Grid(m.Group):
         """
         if vmobject is None:
             if self.frame is not None:
-                self.viewport.remove(self.frame)
+                self.remove(self.frame)
         else:
             self._frame = m.Difference(vmobject, self.viewport).match_style(vmobject)
-            # add to the clip so that it stays with it when scrolling
-            self.viewport.add(self._frame)
+            self.add(self._frame)
 
     @property
     def has_uniform_rows(self) -> bool:
@@ -519,12 +535,47 @@ class Grid(m.Group):
                 "In order to scroll vertically, the grid must have uniform row heights."
             )
 
-        self.stencil.is_clip_static = True
         offset = self._compute_scroll_offset(direction, step)
-        self.shift(offset)
-        self.stencil.is_clip_static = False
+        # stencil.clip and grid.frame should not be shifted
+        with self.keep_viewport_static():
+            self.shift(offset)
+
+        # make sure the stencil is recomputed even with no further animation
         self.stencil.update()
         return self
+
+    @contextmanager
+    def keep_viewport_static(self) -> Generator[None, None, None]:
+        """Keep the viewport in place while this context manager is active.
+
+        The "viewport" here is meant in a visual sense. It is not only composed by the
+        `grid.viewport` Rectangle, but also the `Grid.frame` Difference and the
+        `Grid.stencil.clip` Rectangle. All these submojects usually stay in sync with
+        the grid (e.g. when we shift the grid, we usually want the visual viewport to be
+        shifted as well). However, we sometimes need to transform the Grid without
+        transforming the visual viewport with it (e.g. when scrolling). This context
+        manager simply removes the listed submobjects from the grid while entering and
+        adds them back when exiting.
+
+        Raises
+        ------
+        GridError
+            When the Grid does not have a stencil. It does not make much sense to keep
+            the viewport static when it encompases the whole Grid.
+        """
+        if self._stencil is None:
+            raise GridError(
+                "`keep_viewport_static` can only be used on a Grid with a stencil."
+            )
+        self.stencil.is_clip_static = True
+        if self._frame is not None:
+            self.remove(self.frame)
+        self.remove(self.viewport)
+        yield
+        self.stencil.is_clip_static = False
+        if self._frame is not None:
+            self.add(self.frame)
+        self.add(self.viewport)
 
     def _compute_scroll_offset(
         self, direction: Vector3DLike, step: int

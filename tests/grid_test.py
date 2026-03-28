@@ -1,7 +1,6 @@
 import manim as m
 import numpy as np
 import pytest
-from manim_utils import Stencil
 
 from manim_grid.exceptions import GridFrameError, GridShapeError, GridStencilError
 from manim_grid.grid import Cell, EmptyMobject, Grid, Tags
@@ -268,7 +267,8 @@ def test_new_grid_has_right_submobjects(simple_grid: Grid):
     assert simple_grid.rects[0, 0] in simple_grid.submobjects
     assert simple_grid.olds[0, 0] in simple_grid.submobjects
     assert simple_grid.mobs[0, 0] in simple_grid.submobjects
-    assert isinstance(simple_grid.submobjects[-1], Stencil)
+    assert simple_grid.submobjects[-2] is simple_grid.stencil
+    assert simple_grid.submobjects[-1] is simple_grid.viewport
 
 
 def test_grid_has_right_submobjects_after_adding_mob(
@@ -282,7 +282,8 @@ def test_grid_has_right_submobjects_after_adding_mob(
     assert old in simple_grid.submobjects
     assert simple_grid.mobs[0, 0] is c
     assert c not in simple_grid.submobjects
-    assert isinstance(simple_grid.submobjects[-1], Stencil)
+    assert simple_grid.submobjects[-2] is simple_grid.stencil
+    assert simple_grid.submobjects[-1] is simple_grid.viewport
 
 
 def test_grid_has_right_submobjects_after_adding_group(
@@ -298,7 +299,8 @@ def test_grid_has_right_submobjects_after_adding_group(
     assert r not in simple_grid.submobjects
     assert c not in simple_grid.submobjects
     assert t not in simple_grid.submobjects
-    assert isinstance(simple_grid.submobjects[-1], Stencil)
+    assert simple_grid.submobjects[-2] is simple_grid.stencil
+    assert simple_grid.submobjects[-1] is simple_grid.viewport
 
 
 # ----------------------------------------------------------------------
@@ -314,39 +316,47 @@ def test_frame_without_stencil():
     assert g._frame is None
     r = m.SurroundingRectangle(g)
     g.frame = r
+    gframe = g.frame
     assert isinstance(g.frame, m.Difference)
     assert np.array_equal(g.frame.get_center(), g.get_center())
     g.shift(m.RIGHT)
     assert np.array_equal(g.frame.get_center(), g.get_center())
     g.scale(0.1)
     assert np.array_equal(g.frame.get_center(), g.get_center())
-    assert g.frame in g.get_family()
+    assert g.submobjects[-2] is gframe
+    assert g.submobjects[-1] is g.viewport
     g.frame = None
-    assert g.frame not in g.get_family()
+    assert gframe not in g.submobjects
+    assert g.submobjects[-1] is g.viewport
 
 
 def test_frame_with_stencil(simple_grid: Grid):
     assert simple_grid._frame is None
-    r = m.SurroundingRectangle(simple_grid)
+    r = m.SurroundingRectangle(simple_grid.viewport)
     simple_grid.frame = r
     assert isinstance(simple_grid.frame, m.Difference)
-    assert np.array_equal(
+    np.testing.assert_allclose(
         simple_grid.frame.get_center(), simple_grid.stencil.clip.get_center()
     )
     simple_grid.shift(m.RIGHT)
-    assert np.array_equal(
+    np.testing.assert_allclose(
         simple_grid.frame.get_center(), simple_grid.stencil.clip.get_center()
     )
     simple_grid.scale(0.1)
-    assert np.array_equal(
+    np.testing.assert_allclose(
         simple_grid.frame.get_center(), simple_grid.stencil.clip.get_center()
     )
     simple_grid.scroll(m.UP, 10000)
-    assert np.array_equal(
+    np.testing.assert_allclose(
         simple_grid.frame.get_center(), simple_grid.stencil.clip.get_center()
     )
     assert not np.array_equal(simple_grid.frame.get_center(), simple_grid.get_center())
 
-    assert simple_grid.frame in simple_grid.get_family()
+    assert simple_grid.submobjects[-3] is simple_grid.stencil
+    assert simple_grid.submobjects[-2] is simple_grid.frame
+    assert simple_grid.submobjects[-1] is simple_grid.viewport
+    gframe = simple_grid.frame
     simple_grid.frame = None
-    assert simple_grid.frame not in simple_grid.get_family()
+    assert simple_grid.submobjects[-2] is simple_grid.stencil
+    assert simple_grid.submobjects[-1] is simple_grid.viewport
+    assert gframe not in simple_grid.submobjects
