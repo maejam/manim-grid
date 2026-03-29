@@ -1,16 +1,8 @@
 # 📐 `manim-grid` - A Simple Grid Container to ease Mobjects positioning and referencing  
 
-`manim-grid` is a lightweight [Manim](https://www.manim.community/) plugin that creates a rectangular grid of cells. It lets you place any `Mobject` into a cell by using natural indexing and handles alignment, margins, and automatic positioning for you. As it is based on [NumPy](https://numpy.org/), the full power of NumPy indexing is made available.  
+`manim-grid` is a [Manim](https://www.manim.community/) plugin that offers a new way to build your scenes and interact with manim. It creates a rectangular grid of cells in which you can place any `Mobject` by using a powerful, [NumPy](https://numpy.org/)-based natural indexing. It handles mobject positioning, automation and provides custom animations.  
 
-> **Why this plugin?**  
-> It is born from an attempt to build a better `Code` Mobject, more flexible and easier to work with. This goal quickly turned into a flexible multi-purpose tool.
-
-> **How does it differ from existing manim tools**
-> Manim’s built‑in `arrange_in_grid` arranges submojects but it doesn’t give you a persistent “cell” abstraction you can address later.
-> The `Table` mobject is great but lacks the dynamic behaviour I needed and is mostly a visual tool.
-> The `Paragraph` and `Code` mobjects suffer from the same lack of dynamism and flexibility.
-
-`Grid` fills that gap: it is a flexible, polyvalent and dynamic tool that can be used as a "ruler" to position mobjects in a scene, retrieve them later, and re-assign them on the fly. It does not replace the tools mentioned above but rather offers an alternative way to build and think about your scenes.
+It is born from an attempt to build a better `Code` Mobject, more flexible and easier to work with. This goal quickly turned into a flexible multi-purpose tool. It can be used as a "ruler" to position mobjects in a scene, retrieve them later, and re-assign them on the fly. It can also be used to build event-based scenes.
 
 ---  
 
@@ -25,6 +17,7 @@
   - [Proxies (`mobs`, `olds`, `rects`, `tags`)](#proxies)  
   - [Tags](#tags)
   - [Stencil Viewport and Scrolling](#stencil-viewport-and-scrolling)
+  - [Signals](#signals)
 
 ---  
 
@@ -37,9 +30,10 @@
 - **String labels** - string identifiers can be added to rows and columns to make indexing even more expressive.  
 - **Alignment vectors** - align `Mobjects` to any edge/corner in cells.  
 - **Powerful management of cell attributes** - access any attribute for a single cell or in bulk transparently.  
-- **Per-cell metadata** - add key/value tags to cells, individually or in bulk.  
+- **Per-cell metadata** - add key/value tags to cells.  
 - **Scrolling** - the `scroll` method lets you scroll the grid in any direction with a smooth animation.
 - **Frame** - add a custom frame around the grid that plays well with scrolling.
+- **Signals** - react to events to automate the Grid behaviour.
 - **Fully typed** - for better library and end-user code quality.  
 
 ---  
@@ -85,7 +79,7 @@ class GettingStarted(Scene):
 
         # Place mobjects in the top row, aligned to the upper edge
         # The Mobjects are deliberatly not added to the scene (nor are the previous
-        # occupants of those cells, if any, removed) to allow for greater control
+        # mobjects in those cells, if any, removed) to allow for greater control
         # over animations.
         grid.mobs[0, :, UP] = [
             Circle(radius=0.5, color=BLUE),
@@ -107,7 +101,7 @@ class GettingStarted(Scene):
 
 ## More Examples  
 
-See the following examples in the `/examples` directory:
+The following examples can be found in the [examples](examples/) directory. They are meant to serve as documentation/tutorials on each topic:
 1. [Getting Started](examples/01-getting_started.py)
 2. [Buffers and Margins](examples/02-buffers_and_margins.py)
 3. [Labels](examples/03-labels.py)
@@ -116,6 +110,7 @@ See the following examples in the `/examples` directory:
 6. [Masking](examples/06-masking.py)
 7. [Frame](examples/07-frame.py)
 8. [Alternative Constructors](examples/08-alternative_constructors.py)
+9. [Signals](examples/09-signals.py)
 
 ---  
 
@@ -132,7 +127,7 @@ Each `Cell` holds:
 - `tags`: a dictionary-like `Tags` instance for arbitrary user-defined metadata.  
 
 ### Proxies  
-The Grid class provides four proxy objects that give convenient, NumPy-style access to the underlying cell attributes described above. These proxies return as outputs and take in as inputs different types of objects whether you are targeting individual cells or multiple cells at the same time. e.g.: `grid.mobs[0,0]` returns a Mobject, while `grid.mobs[:]` returns a VGroup of all mobjects contained in the grid, in row-major order. The table below summarizes the expected inputs and the returned outputs for each proxy (single cell/bulk):
+The Grid provides access to the underlying NumPy array of cell objects via `grid.cells`. It also defines four proxy objects that give convenient, NumPy-style access to the cell attributes described above. These proxies return as outputs and take in as inputs different types of objects whether you are targeting individual cells or multiple cells at the same time. e.g.: `grid.mobs[0,0]` returns a Mobject, while `grid.mobs[:]` returns a VGroup of all mobjects contained in the grid, in row-major order. The table below summarizes the expected inputs and the returned outputs for each proxy (single cell/bulk):
 
 | Proxy        | Purpose                                    | Readable (`__getitem__`)     | Writeable (`__setitem__`)           |
 |--------------|--------------------------------------------|------------------------------|-------------------------------------|
@@ -159,7 +154,7 @@ Moreover, the `ScalarTagsSelection` or `BulkTagSelection` instance returned by `
 `ScalarTagsSelection.__setitem__` and `BulkTagSelection.__setitem__` on the other hand allow to completely replace the `Tags` instance(s). It accepts a new `Tags` instance (a copy will be set for each `Cell` in the bulk case) or a mapping (that will be internally converted into a `Tags` instance): `grid.tags[...] = Tags(foo="bar", baz=42)` and `grid.tags[...] = {"foo": "bar", "baz": 42}` or equivalent.
 
 ### Stencil Viewport and Scrolling  
-When a `Grid` is instantiated with `num_visible_rows` and/or `num_visible_cols`, a [Stencil](https://github.com/maejam/manim-utils) instance is added to the grid and is stored in the `grid._stencil` attribute accesible via the `grid.stencil` property. Its purpose is to hide cells that should not be visible. It is a `manim.Difference` object between the whole grid and a `SurroundingRectangle` around the visible cells. The stencil is painted the same color as the scene background to give the impression that only the viewport is added to the screen. The stencil is always transformed with the grid and stays in sync with it.
+When a `Grid` is instantiated with `num_visible_rows` and/or `num_visible_cols`, a [Stencil](https://github.com/maejam/manim-utils) instance is added to the grid and is stored in the `grid._stencil` attribute accesible via the `grid.stencil` property. Its purpose is to hide cells that should not be visible. It is a `manim.Difference` object between the whole grid and a `SurroundingRectangle` around the visible cells that defines the viewport boundaries. The stencil is painted the same color as the scene background to give the impression that only the viewport is added to the screen. The stencil is always transformed with the grid and stays in sync with it.
 
 The scrolling animation is actually the whole grid moving the opposite direction (scrolling DOWN is shifting the grid UP), while the viewport stays in place and the `Difference` is recomputed every frame with an updater. This is why scrolling past the last row/column gives weird artifacts: this is the result of the `Difference` between a `Mobject` and another one that does not entirely intersect it.
 
@@ -189,3 +184,7 @@ class Stencil(Scene):
         grid2 = grid.copy()
         self.add(grid2.next_to(grid).scroll(DOWN, 3))
 ```
+
+### Signals
+The signals system is simply implemented with the great [blinker](https://blinker.readthedocs.io/en/stable/) library.
+New signals are added sparingly only when needed. Open an issue or propose a PR if you need one that is not implemented yet.

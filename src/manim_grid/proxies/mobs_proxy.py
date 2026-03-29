@@ -9,6 +9,7 @@ from typing import (
 
 import manim as m
 import numpy as np
+from blinker import signal
 from manim.typing import Vector3D
 
 from manim_grid.exceptions import GridValueError
@@ -44,7 +45,7 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
     Parameters
     ----------
     grid
-        Parent grid that owns the underlying ``_cells`` matrix.
+        Parent grid that owns the underlying ``cells`` matrix.
     margin
         Margin vector used by :meth:`Cell.insert_mob` to offset the inserted mobject.
 
@@ -101,6 +102,8 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
         value: m.Mobject | Sequence[m.Mobject],
     ) -> None:
         super().__setitem__(index, value)
+        mobs = [value] if isinstance(value, m.Mobject) else value
+        signal("mobs_added").send(self._grid, index=index, mobs=mobs)
 
     def _preprocess_set(
         self,

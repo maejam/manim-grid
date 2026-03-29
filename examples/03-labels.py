@@ -1,11 +1,11 @@
+"""Give meaningful names to rows and columns."""
+
 from manim import *
 
 from manim_grid import Grid
 
 
 class Labels(Scene):
-    """Give meaningful names to rows and columns."""
-
     def construct(self):
         # Give meaningful names with `row_labels` and `col_labels`
         grid = Grid([1] * 5, [1] * 3, col_labels=["row_label", "left", "right"])

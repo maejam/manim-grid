@@ -1,15 +1,15 @@
+"""Tag cells.
+
+This example shows how to tag cells with custom key/value metadata.
+To see how this can reveal very useful, see the next example about `masking`.
+"""
+
 from manim import *
 
 from manim_grid import Grid
 
 
 class Tagging(Scene):
-    """Tag cells.
-
-    This example shows how to tag cells with custom key/value metadata.
-    To see how this can reveal very useful, see the next example about `masking`.
-    """
-
     def construct(self):
         grid = Grid([0.5] * 10, [2] * 2)
 

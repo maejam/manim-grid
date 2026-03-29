@@ -1,18 +1,18 @@
+"""Build boolean masks to easily select cells that satisfy a given condition.
+
+Proxies (grid.mobs/olds/tags/rects) provide a `mask` method that can be used to
+build a boolean NumPy array. This array can then be used on any proxy to filter
+the cells that satisfies the expressed condition.
+The possibilities are limitless. This example tries to demonstrates some possible
+uses with a (very) contrived example.
+"""
+
 from manim import *
 
 from manim_grid import Grid
 
 
 class Masking(Scene):
-    """Build boolean masks to easily select cells that satisfy a given condition.
-
-    Proxies (grid.mobs/olds/tags/rects) provide a `mask` method that can be used to
-    build a boolean NumPy array. This array can then be used on any proxy to filter
-    the cells that satisfies the expressed condition.
-    The possibilities are limitless. This example tries to demonstrates some possible
-    uses with a contrived example.
-    """
-
     def construct(self):
         grid = Grid([1] * 3, [1] * 3)
 

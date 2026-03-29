@@ -10,15 +10,18 @@ from manim_grid.grid import Cell, EmptyMobject, Grid, Tags
 # Cell
 # ----------------------------------------------------------------------
 def test_cell_initial_state():
-    cell = Cell(Grid([1], [1]), rect=m.Rectangle())
+    cell = Cell(Grid([1], [1]), m.Rectangle(), 0, 1)
 
     assert isinstance(cell.mob, EmptyMobject)
     assert isinstance(cell.old, EmptyMobject)
     assert isinstance(cell.tags, Tags)
+    assert isinstance(cell.rect, m.Rectangle)
+    assert cell.row_index == 0
+    assert cell.col_index == 1
 
 
 def test_cell_insert_mob_updates_old_and_mob(dummy_mob):
-    cell = Cell(Grid([1], [1]), rect=m.Rectangle())
+    cell = Cell(Grid([1], [1]), m.Rectangle(), 0, 1)
     default = cell.mob
 
     first = dummy_mob.copy()
@@ -37,7 +40,7 @@ def test_cell_insert_mob_updates_old_and_mob(dummy_mob):
 # Grid
 # ----------------------------------------------------------------------
 def test_prepare_grid_shapes(simple_grid):
-    cells, vgroup = simple_grid._cells, simple_grid.lattice
+    cells, vgroup = simple_grid.cells, simple_grid.lattice
     assert cells.shape == (2, 3)
     assert all(isinstance(c, Cell) for c in cells.ravel())
     rects = [cell.rect for cell in cells.ravel()]

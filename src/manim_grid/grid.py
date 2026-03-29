@@ -5,6 +5,7 @@ from typing import Any, Literal, Self
 
 import manim as m
 import numpy as np
+from blinker import signal
 from manim.typing import Vector3D, Vector3DLike
 from manim_utils import Stencil
 
@@ -49,6 +50,8 @@ class Cell:
 
     _grid: "Grid" = field(repr=False)
     rect: m.Rectangle = field(repr=False)
+    row_index: int
+    col_index: int
     mob: m.Mobject = field(default_factory=EmptyMobject)
     old: m.Mobject = field(default_factory=EmptyMobject)
     tags: Tags = field(default_factory=Tags)
@@ -85,6 +88,7 @@ class Cell:
         self.old = self.mob
         self.mob = mob
         self.mob.move_to(self.rect, aligned_edge=alignment).shift(-alignment * margin)
+        signal("mob_inserted").send(self, grid=self._grid)
 
 
 class Grid(m.Group):
@@ -179,7 +183,7 @@ class Grid(m.Group):
         self._col_labels = self._prepare_labels(col_labels, num_cols)
         self._label_mapper = LabelMapper(self._row_labels, self._col_labels)
 
-        self._cells, self.lattice = self._prepare_grid(
+        self.cells, self.lattice = self._prepare_grid(
             num_rows, num_cols, row_heights, col_widths, self._buff
         )
 
@@ -399,7 +403,7 @@ class Grid(m.Group):
                     height=row_h,
                     width=col_w,
                 )
-                cells[i, j] = Cell(self, rect=rect)
+                cells[i, j] = Cell(self, row_index=i, col_index=j, rect=rect)
 
         lattice = m.VGroup(cell.rect for cell in cells.ravel())
         lattice.arrange_in_grid(
@@ -448,7 +452,7 @@ class Grid(m.Group):
     def _create_stencil(self, num_rows: int, num_cols: int) -> Stencil:
         """Create the stencil to hide cells that should not be visible."""
         visible_area = [
-            cell.rect for cell in self._cells[:num_rows, :num_cols].flatten()
+            cell.rect for cell in self.cells[:num_rows, :num_cols].flatten()
         ]
         clip = m.SurroundingRectangle(m.VGroup(visible_area), buff=0)
         return Stencil(clip=clip, wrapped=self.lattice).set_stroke(opacity=0)

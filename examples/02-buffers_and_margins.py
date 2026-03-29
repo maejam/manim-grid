@@ -1,11 +1,11 @@
+"""Control cells and mobjects positioning."""
+
 from manim import *
 
 from manim_grid import Grid
 
 
 class BuffersMargins(Scene):
-    """Precisely control the cells and mobjects positioning."""
-
     def construct(self):
         # `buff` controls the spacing between cells
         # `margin` controls the padding inside the cells

@@ -1,11 +1,11 @@
+"""Getting started with manim-grid."""
+
 from manim import *
 
 from manim_grid import Grid
 
 
 class GettingStarted(Scene):
-    """A basic example to demonstrate the usage of the Grid."""
-
     def construct(self):
         # Create a 2×3 grid (rows, columns)
         grid = Grid(

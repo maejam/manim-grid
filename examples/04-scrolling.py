@@ -1,3 +1,5 @@
+"""Scroll the Grid."""
+
 from manim import *
 
 from manim_grid import Grid
@@ -5,8 +7,6 @@ from manim_grid.exceptions import GridShapeError
 
 
 class Scrolling(Scene):
-    """Scroll the Grid."""
-
     def construct(self):
         # When providing num_visible_rows and/or num_visible_cols, it is then possible
         # to scroll the grid vertically and/or horizontally

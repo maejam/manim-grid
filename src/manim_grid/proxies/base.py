@@ -49,7 +49,7 @@ class _BaseProxy(Generic[T]):
     Parameters
     ----------
     grid
-        The parent :class:`~manim_grid.grid.Grid` instance that owns the ``_cells``
+        The parent :class:`~manim_grid.grid.Grid` instance that owns the ``cells``
         matrix.
 
     Attributes
@@ -73,13 +73,13 @@ class _BaseProxy(Generic[T]):
         vec = np.vectorize(
             lambda cell: str(getattr(cell, self._attr)), otypes=[np.str_]
         )
-        return str(vec(self._grid._cells[:]))
+        return str(vec(self._grid.cells[:]))
 
     def __repr__(self) -> str:
-        return f"<{type(self).__name__} of size {self._grid._cells.shape}>"
+        return f"<{type(self).__name__} of size {self._grid.cells.shape}>"
 
     def __iter__(self) -> Generator[T]:
-        for cell in self._grid._cells.flat:
+        for cell in self._grid.cells.flat:
             yield getattr(cell, self._attr)
 
     def mask(
@@ -104,7 +104,7 @@ class _BaseProxy(Generic[T]):
             ``value``, it will not be selected.
         """
         values = np.vectorize(lambda cell: getattr(cell, self._attr), otypes=[object])(
-            self._grid._cells
+            self._grid.cells
         )
 
         if predicate is None and not kwargs:
@@ -134,7 +134,7 @@ class ReadableProxy(_BaseProxy[T]):
     Parameters
     ----------
     grid
-        Parent grid that owns the underlying ``_cells`` matrix.
+        Parent grid that owns the underlying ``cells`` matrix.
     attr
         Name of the attribute on ``Cell`` that should be read.
 
@@ -169,7 +169,7 @@ class ReadableProxy(_BaseProxy[T]):
         idx, kwargs = self._preprocess_get(index)
         np_index = self._grid._label_mapper.map_index(idx)
         selector = np.index_exp[np_index]
-        subarray = self._grid._cells[cast(Any, selector)]
+        subarray = self._grid.cells[cast(Any, selector)]
         return self._postprocess_get(subarray, **kwargs)
 
     def _preprocess_get(
@@ -209,7 +209,7 @@ class ReadableProxy(_BaseProxy[T]):
         Parameters
         ----------
         subarray
-            Result of the numpy selector applied to ``self._grid._cells``.
+            Result of the numpy selector applied to ``self._grid.cells``.
             It may be a ``Cell`` or an ``ndarray`` of ``Cell`` objects.
 
         **kwargs
@@ -237,7 +237,7 @@ class WriteableProxy(_BaseProxy[T]):
     Parameters
     ----------
     grid
-        Parent grid that owns the underlying ``_cells`` matrix.
+        Parent grid that owns the underlying ``cells`` matrix.
     attr
         Name of the attribute on ``Cell`` that should be written.
 
@@ -267,7 +267,7 @@ class WriteableProxy(_BaseProxy[T]):
         idx, value, kwargs = self._preprocess_set(index, value)
         np_index = self._grid._label_mapper.map_index(idx)
         selector = np.index_exp[np_index]
-        subarray = self._grid._cells[cast(Any, selector)]
+        subarray = self._grid.cells[cast(Any, selector)]
         self._postprocess_set(subarray, value, **kwargs)
 
     def _preprocess_set(

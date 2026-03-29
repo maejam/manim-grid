@@ -1,11 +1,15 @@
+"""Adding a frame to your grid.
+
+Because the Grid can be partly covered by a `Stencil`, adding a frame around your Grid
+is not so trivial. This example demonstrates the built-in `frame` functionality.
+"""
+
 from manim import *
 
 from manim_grid import Grid
 
 
 class Frame(Scene):
-    """Adding a frame to your grid."""
-
     def construct(self):
         grid = Grid([0.5] * 5, [1] * 2, num_visible_rows=2)
 
