@@ -1,7 +1,20 @@
+import contextlib
 import copy
-from abc import abstractmethod
-from collections.abc import Generator, Mapping
-from typing import TYPE_CHECKING, Any, Self, cast, overload
+import keyword
+from abc import ABC, abstractmethod
+from collections.abc import (
+    ItemsView,
+    Iterator,
+    KeysView,
+    Mapping,
+    ValuesView,
+)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    cast,
+    overload,
+)
 
 import numpy as np
 
@@ -13,7 +26,33 @@ if TYPE_CHECKING:
     from manim_grid.grid import Cell
 
 
-class Tags(dict[str, Any]):
+class TagsBase(ABC):
+    """The base class in a composite-like pattern.
+
+    Defines the behavior in common between Tags and TagsList. Those 3 classes make it
+    possible to interact with Tags or TagsList in the same way.
+    """
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        for tags in self.iter_tags():
+            tags[name] = value
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("__") and name.endswith("__"):
+            raise AttributeError(name)
+        result = [tags.get(name, MISSING) for tags in self.iter_tags()]
+        return result[0] if len(result) == 1 else result
+
+    def __delattr__(self, name: str) -> None:
+        for tags in self.iter_tags():
+            with contextlib.suppress(KeyError):
+                del tags[name]
+
+    @abstractmethod
+    def iter_tags(self) -> Iterator["Tags"]: ...
+
+
+class Tags(dict[str, Any], TagsBase):
     """Store user-defined tags.
 
     This is a dictionary subclass with dot notation attribute access and key validation.
@@ -21,7 +60,7 @@ class Tags(dict[str, Any]):
     Parameters
     ----------
     **tags
-        Initial key/value pair tags to store.
+        Initial key/value pairs tags to store.
     """
 
     def __init__(self, **tags: Any) -> None:
@@ -29,177 +68,100 @@ class Tags(dict[str, Any]):
             self._validate_key(k)
         super().__init__(tags)
 
+    def iter_tags(self) -> Iterator["Tags"]:
+        yield self
+
     def _validate_key(self, key: str) -> None:
         if key.startswith("_"):
-            raise ValueError(f"Tag keys may not start with '_' (got {key!r}.)")
+            raise KeyError(f"Tag keys may not start with '_' (got {key!r}.)")
+
+        if keyword.iskeyword(key):
+            raise KeyError(f"Tag key {key!r} is a reserved keyword.")
 
         if not key.isidentifier():
-            raise ValueError(f"Tag key '{key}' is not a valid Python identifier.")
+            raise KeyError(f"Tag key {key!r} is not a valid Python identifier.")
 
     def __setitem__(self, key: str, value: Any) -> None:
         self._validate_key(key)
         super().__setitem__(key, value)
 
-    def __str__(self) -> str:
-        items = (f"{key!r}: {value!r}" for key, value in self.items())
-        return "{" + ", ".join(items) + "}"
-
     def __repr__(self) -> str:
-        attrs = ", ".join(f"{key}={value}" for key, value in self.items())
+        attrs = ", ".join(f"{key}={value!r}" for key, value in self.items())
         return f"Tags({attrs})"
 
-    def __getattr__(self, name: str) -> Any:
-        try:
-            return self[name]
-        except KeyError as e:
-            raise AttributeError(name) from e
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        self[name] = value
+class TagsList(list[Tags], TagsBase):
+    """A list of Tags with the same interface as single Tags.
 
-    def __delattr__(self, name: str) -> None:
-        try:
-            del self[name]
-        except KeyError as e:
-            raise AttributeError(name) from e
+    This class partly inherits its behavior from list. As such, the list methods are
+    available to manipulate its elements with one exception: `pop`. This is because
+    to be able to interact with TagsList as if it were a single Tags , this method also
+    defines the dict methods and forwards them to Tags. Because `pop` is both a list
+    and a dict method, the choice was made to keep the interface consistent with Tags
+    and keep the dict method.
+    All dict methods return a list of whatever that method returns for each Tags entry
+    in the TagsList, and mutates the Tags instances in the same way dict would.
 
-
-class _TagsSelectionBase:
-    """Methods that are identical for scalar and bulk selections.
-
-    Subclasses instances are returned from indexing the ``tags`` argument on a grid
-    (i.e. ``grid.tags[...]`` returns :class:`ScalarTagsSelection` or
-    :class:`BulkTagSelection` instances).
-
-    See Also
-    --------
-    manim_grid.proxies.ScalarTagsSelection
-    manim_grid.proxies.BulkTagsSelection
+    Parameters
+    ----------
+    tags
+        The initial Tags instances to store in the TagsList. `__init__` is inherited
+        from list.
     """
 
-    def update(self, **kwargs: Any) -> Self:
-        """Add or overwrite attributes on every selected Tags object.
+    def iter_tags(self) -> Iterator["Tags"]:
+        yield from self
 
-        Parameters
-        ----------
-        **kwargs
-            Attributes to be updated in the form "key=value".
+    def update(self, *args: Any, **kwargs: Any) -> None:
+        for tags in self.iter_tags():
+            tags.update(*args, **kwargs)
 
-        Returns
-        -------
-        Self
-            The selection itself to allow chaining methods and attributes calls.
-        """
-        for tags in iter(self):
-            tags.update(kwargs)
-        return self
+    def pop(self, key: str, *default: Any) -> Any:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+        results = []
+        for tags in self.iter_tags():
+            if default:
+                results.append(tags.pop(key, default[0]))
+            else:
+                results.append(tags.pop(key))
+        return results
 
-    def remove(self, *keys: str) -> Self:
-        """Delete the given keys from every selected Tags object.
+    def popitem(self) -> list[tuple[str, Any]]:
+        results = []
+        for tags in self.iter_tags():
+            results.append(tags.popitem())
+        return results
 
-        Parameters
-        ----------
-        *keys
-            Keys to remove from the selected Tags objects.
-
-        Returns
-        -------
-        Self
-            The selection itself to allow chaining methods and attributes calls.
-        """
-        for tags in iter(self):
-            for key in keys:
-                tags.pop(key, None)
-        return self
-
-    def clear(self) -> Self:
-        """Remove *all* user-defined attributes from every selected Tags.
-
-        Returns
-        -------
-        Self
-            The selection itself to allow chaining methods and attributes calls.
-        """
-        for tags in iter(self):
+    def clear(self) -> None:
+        for tags in self.iter_tags():
             tags.clear()
-        return self
 
-    @abstractmethod
-    def __iter__(self) -> Generator[Tags]: ...
+    def setdefault(self, key: str, default: Any = None) -> list[Any]:
+        results = []
+        for tags in self.iter_tags():
+            results.append(tags.setdefault(key, default))
+        return results
 
+    def get(self, key: str, default: Any = None) -> list[Any]:
+        results = []
+        for tags in self.iter_tags():
+            results.append(tags.get(key, default))
+        return results
 
-class ScalarTagsSelection(_TagsSelectionBase):
-    """Handle a single Cell selection."""
+    def keys(self) -> list[KeysView[str]]:
+        return [tags.keys() for tags in self.iter_tags()]
 
-    __slots__ = ("_cell",)
+    def values(self) -> list[ValuesView[Any]]:
+        return [tags.values() for tags in self.iter_tags()]
 
-    def __init__(self, cell: "Cell") -> None:
-        self._cell = cell
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._cell.tags, name, MISSING)
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name == "_cell":
-            super().__setattr__(name, value)
-            return
-        setattr(self._cell.tags, name, value)
-
-    def __delattr__(self, name: str) -> None:
-        delattr(self._cell.tags, name)
-
-    def __iter__(self) -> Generator[Tags]:
-        yield self._cell.tags
-
-    def __str__(self) -> str:
-        return str(self._cell.tags)
-
-    def __repr__(self) -> str:
-        return f"ScalarTagsSelection(cell={self._cell!r})"
-
-
-class BulkTagsSelection(_TagsSelectionBase):
-    """Handle a selection with multiple Cells."""
-
-    __slots__ = ("_cells",)
-
-    def __init__(self, cells: np.ndarray) -> None:
-        self._cells = cells
-
-    def __getattr__(self, name: str) -> np.ndarray:
-        vec = np.vectorize(
-            lambda cell: getattr(cell.tags, name, MISSING), otypes=[object]
-        )
-        return cast(np.ndarray, vec(self._cells))
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name == "_cells":
-            super().__setattr__(name, value)
-            return
-        for cell in self._cells.flat:
-            setattr(cell.tags, name, value)
-
-    def __delattr__(self, name: str) -> None:
-        for cell in self._cells.flat:
-            delattr(cell.tags, name)
-
-    def __iter__(self) -> Generator[Tags]:
-        for cell in self._cells.flat:
-            yield cell.tags
-
-    def __str__(self) -> str:
-        vec = np.vectorize(lambda cell: str(cell.tags), otypes=[object])
-        return str(vec(self._cells))
-
-    def __repr__(self) -> str:
-        return f"BulkTagsSelection(cells={self._cells!r})"
+    def items(self) -> list[ItemsView[str, Any]]:
+        return [tags.items() for tags in self.iter_tags()]
 
 
 class TagsProxy(ReadableProxy[Tags], WriteableProxy[Tags]):
     """Proxy that forwards attribute access to the ``tags`` field of each Cell.
 
-    It returns a _TagsSelection view so that the user can request a given tag or chain
-    ``.update/.remove/.clear`` after an indexing operation.
+    It returns a Tags or TagsList view so that the user can request a given tag or chain
+    ``.update/.remove/.clear``... after an indexing operation.
 
     Examples
     --------
@@ -218,43 +180,41 @@ class TagsProxy(ReadableProxy[Tags], WriteableProxy[Tags]):
 
     Bulk assignment and retrieval
     -----------------------------
-    >>> # Update multiple tags on every cell in the first row
-    >>> g.tags[0].update(foo="bar", baz=42)
+    >>> # Set the 'foo' tag on all the cells in the first row
+    >>> g.tags[0].foo = "bar"
+    >>> g.tags[0].foo
+    ['bar', 'bar', 'bar']
+
+    >>> # Using the dict methods
+    >>> g.tags[0].update(foo="qux", baz=42)
     >>> # Retrieve the ``foo`` flag for the entire grid
-    >>> foo_flags = g.tags[:, :].foo
-    >>> isinstance(foo_flags, np.ndarray)
+    >>> foo_flags = g.tags[:].foo
+    >>> isinstance(foo_flags, TagsList)
     True
-    >>> foo_flags.shape
-    (2, 3)
+    >>> len(foo_flags)
+    6
 
     Missing-tag handling
     --------------------
     >>> # Only the first row received the ``baz`` tag
-    >>> baz = g.tags[:, :].baz
+    >>> baz_tag = g.tags[:].baz
     >>> baz[0, 0]                     # present: returns the value
     42
-    >>> baz[1, 2]                     # absent: returns the sentinel
+    >>> baz[1, 2]                     # absent: returns the MISSING sentinel
     '<MISSING>'
 
-    Removing and clearing tags
-    ---------------------------
-    >>> # Delete the ``foo`` flag from a rectangular block
-    >>> g.tags["1":"2", "2":"3"].remove("foo")
-    >>> g.tags["1", "2"].foo is MISSING
-    True
+    NOTE
+    ----
+    Setting a mutable object as a value will result in a shared object:
 
-    >>> # Clear *all* user-defined tags from a masked selection
-    >>> g.mobs["1", "1"] = Circle()
-    >>> mask = g.mobs.mask(predicate=lambda mob: isinstance(mob, Circle))
-    >>> g.tags[mask].clear()
-    >>> g.tags["1", "1"].foo is MISSING
-    True
+    Example::
+        >>> grid = Grid([1]*2, [1]*2)
+        >>> grid.tags[0, :].mutable = [1, 2]
+        >>> grid.tags[0, 0].mutable.append(3)
+        >>> grid.tags
+        [['Tags(mutable=[1, 2, 3])' 'Tags(mutable=[1, 2, 3])']
+        ['Tags(mutable=[1, 2, 3])' 'Tags(mutable=[1, 2, 3])']]
 
-    Mixing attribute and method calls
-    --------------------------------
-    >>> # You can still read/write attributes after a method call
-    >>> g.tags["2", "2"].update(priority=5).remove("foo").priority
-    5
 
     See Also
     --------
@@ -265,22 +225,22 @@ class TagsProxy(ReadableProxy[Tags], WriteableProxy[Tags]):
     _attr = "tags"
 
     @overload
-    def __getitem__(self, index: ScalarIndex) -> ScalarTagsSelection: ...
+    def __getitem__(self, index: ScalarIndex) -> Tags: ...
 
     @overload
-    def __getitem__(self, index: BulkIndex) -> BulkTagsSelection: ...
+    def __getitem__(self, index: BulkIndex) -> TagsList: ...
 
-    def __getitem__(
-        self, index: ScalarIndex | BulkIndex
-    ) -> ScalarTagsSelection | BulkTagsSelection:
-        return cast(ScalarTagsSelection | BulkTagsSelection, super().__getitem__(index))
+    def __getitem__(self, index: ScalarIndex | BulkIndex) -> Tags | TagsList:
+        return cast(Tags | TagsList, super().__getitem__(index))
 
     def _postprocess_get(
         self, subarray: "Cell | np.ndarray", **_: Any
-    ) -> ScalarTagsSelection | BulkTagsSelection:
-        if isinstance(subarray, np.ndarray):
-            return BulkTagsSelection(subarray)
-        return ScalarTagsSelection(subarray)
+    ) -> Tags | TagsList:
+        from manim_grid.grid import Cell
+
+        if isinstance(subarray, Cell):
+            return cast(Tags, getattr(subarray, self._attr))
+        return TagsList(getattr(cell, self._attr) for cell in subarray.flat)
 
     def __setitem__(
         self, index: ScalarIndex | BulkIndex, value: Tags | Mapping[str, Any]

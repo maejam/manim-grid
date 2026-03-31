@@ -2,6 +2,9 @@
 
 manim-grid provides signals based on blinker that you can use as hooks to add event
 callbacks to your scenes.
+This provides many possibilities such as triggering a series of actions when tagging
+a cell, or removing old mobjects and adding new ones automatically... the possibilities
+are endless.
 
 The available signals as well as their documentation can be found in
 `src/manim-grid/signals.py`.

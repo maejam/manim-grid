@@ -4,7 +4,7 @@ import pytest
 
 from manim_grid.exceptions import GridValueError
 from manim_grid.grid import EmptyMobject, Grid
-from manim_grid.proxies.tags_proxy import MISSING, Tags
+from manim_grid.proxies.tags_proxy import MISSING, Tags, TagsList
 
 
 # ----------------------------------------------------------------------
@@ -203,9 +203,28 @@ def test_olds_proxy_is_readonly(simple_grid):
 # ----------------------------------------------------------------------
 # TagsProxy
 # ----------------------------------------------------------------------
+def test_tagsproxy_getitem_setitem(simple_grid: Grid):
+    assert simple_grid.tags[0, 0] == {}
+    assert isinstance(simple_grid.tags[0, 0], Tags)
+    simple_grid.tags[0, 0] = {"foo": "bar"}
+    assert simple_grid.tags[0, 0] == {"foo": "bar"}
+    assert isinstance(simple_grid.tags[0, 0], Tags)
+    simple_grid.tags[0, :] = {"baz": 42}
+    assert simple_grid.tags[0, 0] == {"baz": 42}
+    assert isinstance(simple_grid.tags[0, 0], Tags)
+    assert simple_grid.tags[0, :] == [{"baz": 42}, {"baz": 42}, {"baz": 42}]
+    assert isinstance(simple_grid.tags[0, :], TagsList)
+    assert simple_grid.tags[0, 0] is not simple_grid.tags[0, 1]
+
+
 def test_tags_str():
     tags = Tags(one=1, two=2)
-    assert str(tags) == "{'one': 1, 'two': 2}"
+    assert str(tags) == "Tags(one=1, two=2)"
+
+
+def test_tags_list_str():
+    tags = TagsList([Tags(one=1, two=2), Tags(three=3)])
+    assert str(tags) == "[Tags(one=1, two=2), Tags(three=3)]"
 
 
 def test_tags_repr():
@@ -213,172 +232,113 @@ def test_tags_repr():
     assert repr(tags) == "Tags(one=1, two=2)"
 
 
-def test_scalar_tags_selection_setattr_getattr_and_delattr(simple_grid: Grid):
+def test_tagslist_repr():
+    tags = TagsList([Tags(one=1, two=2), Tags(three=3)])
+    assert str(tags) == "[Tags(one=1, two=2), Tags(three=3)]"
+
+
+def test_tags_setattr_getattr_and_delattr(simple_grid: Grid):
+    assert simple_grid.tags[1, 1] == {}
     simple_grid.tags[1, 1].foo = "bar"
     assert simple_grid.tags[1, 1].foo == "bar"
     del simple_grid.tags[1, 1].foo
     assert simple_grid.tags[1, 1].foo is MISSING
     assert simple_grid.tags[1, 1].baz is MISSING
-    assert simple_grid.tags[0, 0].foo is MISSING
-    with pytest.raises(AttributeError):
-        del simple_grid.tags[1, 1].foo
-
-    simple_grid.tags[0, 0] = {"foo": "bar", "baz": 42}
-    assert simple_grid.tags[0, 0].foo == "bar"
-    assert simple_grid.tags[0, 0].baz == 42
-
-
-def test_scalar_tags_selection_update(simple_grid: Grid):
-    simple_grid.tags[1, 1].update(foo="bar", baz=42)
-    assert simple_grid.tags[1, 1].foo == "bar"
-    assert simple_grid.tags[1, 1].baz == 42
-    assert simple_grid.tags[0, 0].foo is MISSING
-    assert simple_grid.tags[1, 1].foobar is MISSING
-
-
-def test_scalar_tags_selection_remove(simple_grid: Grid):
-    simple_grid.tags[1, 1].update(foo="bar", baz=42)
-    simple_grid.tags[1, 1].remove("baz")
-    assert simple_grid.tags[1, 1].foo == "bar"
-    assert simple_grid.tags[1, 1].baz is MISSING
-    assert simple_grid.tags[0, 0].foo is MISSING
-    assert simple_grid.tags[1, 1].foobar is MISSING
-
-
-def test_scalar_tags_selection_clear(simple_grid: Grid):
-    simple_grid.tags[1, 1].update(foo="bar", baz=42)
-    simple_grid.tags[1, 1].clear()
+    del simple_grid.tags[1, 1].foo
     assert simple_grid.tags[1, 1].foo is MISSING
-    assert simple_grid.tags[1, 1].baz is MISSING
-    assert simple_grid.tags[0, 0].foo is MISSING
-    assert simple_grid.tags[1, 1].foobar is MISSING
 
 
-def test_scalar_tags_selection_str(simple_grid: Grid):
-    assert str(simple_grid.tags[1, 1]) == "{}"
-    simple_grid.tags[1, 1].foo = "bar"
-    assert str(simple_grid.tags[1, 1]) == "{'foo': 'bar'}"
-    assert str(simple_grid.tags[1, 1].dne) == "<MISSING>"
+def test_tagslist_setattr_getattr_and_delattr(simple_grid: Grid):
+    assert simple_grid.tags[1, :] == [{}, {}, {}]
+    simple_grid.tags[1, :-1].foo = "bar"
+    assert simple_grid.tags[1, :] == [{"foo": "bar"}, {"foo": "bar"}, {}]
+    del simple_grid.tags[1, 1:].foo
+    assert simple_grid.tags[1, :] == [{"foo": "bar"}, {}, {}]
+    simple_grid.tags[1, 0].baz = 42
+    assert simple_grid.tags[1, :] == [{"foo": "bar", "baz": 42}, {}, {}]
+    del simple_grid.tags[1, 0].foo
+    assert simple_grid.tags[1, :] == [{"baz": 42}, {}, {}]
 
 
-def test_scalar_tags_selection_repr(simple_grid: Grid):
-    assert (
-        repr(simple_grid.tags[1, 1])
-        == "ScalarTagsSelection(cell=Cell(row_index=1, col_index=1, mob=EmptyMobject, "
-        "old=EmptyMobject, tags=Tags()))"
-    )
-    simple_grid.tags[1, 1].foo = "bar"
-    assert (
-        repr(simple_grid.tags[1, 1])
-        == "ScalarTagsSelection(cell=Cell(row_index=1, col_index=1, mob=EmptyMobject, "
-        "old=EmptyMobject, tags=Tags(foo=bar)))"
-    )
+def test_tags_validate_key(simple_grid: Grid):
+    with pytest.raises(KeyError, match="may not start with '_'"):
+        simple_grid.tags[0, 0]._foo = "bar"
+
+    with pytest.raises(KeyError, match="is a reserved keyword"):
+        simple_grid.tags[0, 0] = Tags(**{"class": 1})
+
+    with pytest.raises(KeyError, match="is not a valid Python identifier"):
+        simple_grid.tags[0, 0] = Tags(**{"1foo": 1})
 
 
-def test_bulk_tags_selection_setattr_getattr_and_delattr(simple_grid: Grid):
-    simple_grid.tags[0, :].foo = "bar"
-    it = iter(simple_grid.tags[0, :])
-    assert next(it)["foo"] == "bar"
-    assert next(it).foo == "bar"
-    assert next(it).foo == "bar"
-    with pytest.raises(StopIteration):
-        _ = next(it).foo
-    simple_grid.tags[1, :] = Tags(foo="bar", baz=42)
-    del simple_grid.tags[1, :].foo
-    assert not any(simple_grid.tags[1, :].foo == "bar")
-    assert all(simple_grid.tags[1, :].baz == 42)
+def test_tagslist_validate_key(simple_grid: Grid):
+    with pytest.raises(KeyError, match="may not start with '_'"):
+        simple_grid.tags[0, :]._foo = "bar"
+
+    with pytest.raises(KeyError, match="is a reserved keyword"):
+        simple_grid.tags[0, :] = Tags(**{"class": 1})
+
+    with pytest.raises(KeyError, match="is not a valid Python identifier"):
+        simple_grid.tags[0, :] = Tags(**{"1foo": 1})
 
 
-def test_setattr_raises_with_invalid_input(simple_grid: Grid):
-    with pytest.raises(
-        TypeError,
-        match="TagsProxy expects a Tags instance or a mapping",
-    ):
-        simple_grid.tags[1, :] = 42
+def test_tagslist_update(simple_grid: Grid):
+    simple_grid.tags[0].update(foo="bar")
+    simple_grid.tags[0].update(foo="qux", baz=42)
+    assert simple_grid.tags[0, 0] == simple_grid.tags[0, 1] == {"foo": "qux", "baz": 42}
 
 
-def test_bulk_tags_selection_update(simple_grid: Grid):
-    simple_grid.tags[1, :].update(foo="bar", baz=42)
-    for i in range(3):
-        assert simple_grid.tags[1, i].foo == "bar"
-        assert simple_grid.tags[1, i].baz == 42
-        assert simple_grid.tags[1, i].foobar is MISSING
-    assert simple_grid.tags[0, 0].foo is MISSING
+def test_tagslist_pop(simple_grid: Grid):
+    simple_grid.tags[:] = {"foo": "bar", "baz": 42}
+    foo = simple_grid.tags[0].pop("foo")
+    assert foo == ["bar"] * 3
+    assert simple_grid.tags[0].foo == [MISSING] * 3
+    assert simple_grid.tags[0].baz == [42] * 3
 
 
-def test_keys_are_validated_when_mutating_tags(simple_grid: Grid):
-    with pytest.raises(ValueError, match="Tag keys may not start with '_'"):
-        simple_grid.tags[1, 1]._foo = "bar"
-    with pytest.raises(ValueError, match="Tag keys may not start with '_'"):
-        simple_grid.tags[1, :]._foo = "bar"
-    with pytest.raises(ValueError, match="is not a valid Python identifier"):
-        simple_grid.tags[1, 1] = {"9foo": "bar"}
-    with pytest.raises(ValueError, match="is not a valid Python identifier"):
-        simple_grid.tags[1, :] = {"9foo": "bar"}
-    with pytest.raises(ValueError, match="is not a valid Python identifier"):
-        simple_grid.tags[1, :] = {"foo baz": "bar"}
+def test_tagslist_popitem(simple_grid: Grid):
+    simple_grid.tags[:] = {"foo": "bar", "baz": 42}
+    res = simple_grid.tags[0].popitem()
+    assert res == [("baz", 42)] * 3
+    assert simple_grid.tags[0] == [{"foo": "bar"}] * 3
 
 
-def test_bulk_tags_selection_remove(simple_grid: Grid):
-    simple_grid.tags[1, :].update(foo="bar", baz=42)
-    simple_grid.tags[1, 0:2].remove("baz")
-    assert simple_grid.tags[1, 0].foo == "bar"
-    assert simple_grid.tags[1, 0].baz is MISSING
-    assert simple_grid.tags[1, 1].foo == "bar"
-    assert simple_grid.tags[1, 1].baz is MISSING
-    assert simple_grid.tags[1, 2].foo == "bar"
-    assert simple_grid.tags[1, 2].baz == 42
-    assert simple_grid.tags[0, 0].foo is MISSING
-    assert simple_grid.tags[1, 1].foobar is MISSING
+def test_tagslist_clear(simple_grid: Grid):
+    simple_grid.tags[:] = {"foo": "bar", "baz": 42}
+    simple_grid.tags[0, :2].clear()
+    assert simple_grid.tags[0, :2] == [{}] * 2
+    assert simple_grid.tags[0, -1] == {"foo": "bar", "baz": 42}
 
 
-def test_bulk_tags_selection_clear(simple_grid: Grid):
-    simple_grid.tags[1, :].update(foo="bar", baz=42)
-    simple_grid.tags[1, 1:].clear()
-    assert simple_grid.tags[1, 0].foo == "bar"
-    assert simple_grid.tags[1, 0].baz == 42
-    assert simple_grid.tags[1, 1].foo is MISSING
-    assert simple_grid.tags[1, 1].baz is MISSING
-    assert simple_grid.tags[0, 0].foo is MISSING
-    assert simple_grid.tags[1, 1].foobar is MISSING
-
-
-def test_tags_proxy_mask(simple_grid: Grid):
-    mob1 = m.Circle()
-    mob2 = m.Square()
-    mob3 = m.Dot()
-    mob4 = m.Rectangle()
-    mob5 = m.Rectangle()
-    mob6 = m.Rectangle()
-    simple_grid.mobs[0] = [mob1, mob2, mob3]
-    simple_grid.mobs[1] = [mob4, mob5, mob6]
+def test_tagslist_setdefault(simple_grid: Grid):
     simple_grid.tags[0] = {"foo": "bar", "baz": 42}
-    mask = simple_grid.tags.mask(predicate=lambda d: "foo" in d, baz=42)
-    assert list(simple_grid.mobs[mask]) == [mob1, mob2, mob3]
-
-    mask2 = simple_grid.tags.mask(baz=MISSING)
-    assert list(simple_grid.mobs[mask2]) == [mob4, mob5, mob6]
+    simple_grid.tags[:].setdefault("foo", "qux")
+    assert simple_grid.tags[0, 0].foo == "bar"
+    assert simple_grid.tags[1, 0].foo == "qux"
 
 
-def test_bulk_tags_selection_str(simple_grid: Grid):
-    assert str(simple_grid.tags[1, :]) == "['{}' '{}' '{}']"
-    simple_grid.tags[1, :].foo = "bar"
-    assert (
-        str(simple_grid.tags[1, :])
-        == "[\"{'foo': 'bar'}\" \"{'foo': 'bar'}\" \"{'foo': 'bar'}\"]"
-    )
+def test_tagslist_get(simple_grid: Grid):
+    simple_grid.tags[0] = {"foo": "bar", "baz": 42}
+    assert simple_grid.tags[0].get("foo") == ["bar"] * 3
+    assert simple_grid.tags[0, 0] == {"foo": "bar", "baz": 42}
+    assert simple_grid.tags[1].get("foo") == [None] * 3
+    assert simple_grid.tags[1].get("foo", "foofoo") == ["foofoo"] * 3
+    assert simple_grid.tags[1, 0] == {}
 
 
-def test_bulk_tags_selection_repr(simple_grid: Grid):
-    assert (
-        repr(simple_grid.tags[1, :1])
-        == "BulkTagsSelection(cells=array([Cell(row_index=1, col_index=0, "
-        "mob=EmptyMobject, old=EmptyMobject, tags=Tags())],\n      dtype=object))"
-    )
-    simple_grid.tags[1, :].foo = "bar"
-    assert (
-        repr(simple_grid.tags[1, :1])
-        == "BulkTagsSelection(cells=array([Cell(row_index=1, col_index=0, "
-        "mob=EmptyMobject, old=EmptyMobject, tags=Tags(foo=bar))],\n      "
-        "dtype=object))"
-    )
+def test_tagslist_keys(simple_grid: Grid):
+    simple_grid.tags[0] = {"foo": "bar", "baz": 42}
+    assert list(simple_grid.tags[0].keys()[0]) == ["foo", "baz"]
+    assert list(simple_grid.tags[:].keys()[-1]) == []
+
+
+def test_tagslist_values(simple_grid: Grid):
+    simple_grid.tags[0] = {"foo": "bar", "baz": 42}
+    assert list(simple_grid.tags[:].values()[0]) == ["bar", 42]
+    assert list(simple_grid.tags[:].values()[-1]) == []
+
+
+def test_tagslist_items(simple_grid: Grid):
+    simple_grid.tags[0] = {"foo": "bar", "baz": 42}
+    assert list(simple_grid.tags[0].items()[0]) == [("foo", "bar"), ("baz", 42)]
+    assert list(simple_grid.tags[:].items()[-1]) == []

@@ -1,6 +1,6 @@
 # 📐 `manim-grid` - A Simple Grid Container to ease Mobjects positioning and referencing  
 
-`manim-grid` is a [Manim](https://www.manim.community/) plugin that offers a new way to build your scenes and interact with manim. It creates a rectangular grid of cells in which you can place any `Mobject` by using a powerful, [NumPy](https://numpy.org/)-based natural indexing. It handles mobject positioning, automation and provides custom animations.  
+`manim-grid` is a [Manim](https://www.manim.community/) plugin that offers a new way to build scenes and interact with manim. It creates a rectangular grid of cells in which you can place any `Mobject` by using a powerful, [NumPy](https://numpy.org/)-based natural indexing. It handles mobject positioning, automation and provides custom animations.  
 
 It is born from an attempt to build a better `Code` Mobject, more flexible and easier to work with. This goal quickly turned into a flexible multi-purpose tool. It can be used as a "ruler" to position mobjects in a scene, retrieve them later, and re-assign them on the fly. It can also be used to build event-based scenes.
 
@@ -134,24 +134,22 @@ The Grid provides access to the underlying NumPy array of cell objects via `grid
 | `grid.mobs`  | Access or assign Mobject(s) to cell(s).    | ✅ Output: Mobject/VGroup    | ✅ Input: Mobject/Sequence[Mobject] |
 | `grid.olds`  | Retrieve the previously stored Mobject(s). | ✅ Output: Mobject/VGroup    | ❌                                  |
 | `grid.rects` | Access the lattice Rectangles.             | ✅ Output: Rectangle/VGroup  | ❌                                  |
-| `grid.tags`  | Manipulate metadata via the `Tags` class.  | ✅ Output: STS/BTS objects*  | ✅ Input: Tags or mapping           |
+| `grid.tags`  | Store and manipulate metadata in Cells.    | ✅ Output: Tags/TagsList     | ✅ Input: Tags or mapping           |
 
-*<sub>STS/BTS: ScalarTagsSelection/BulkTagsSelection objects returned when indexing the tags proxy (i.e. `grid.tags[...]`).</sub>  
 
 ### Tags  
 Each `Cell` holds a `Tags` instance in their `tags` attribute. This class acts as a python dictionary with dot attribute access.
-Moreover, the `ScalarTagsSelection` or `BulkTagSelection` instance returned by `TagsProxy.__getitem__` define the following methods (directly or through their base class `_TagsSelectionBase`):
 
-| Method        | Purpose                                                          | Example                            | 
-|---------------|------------------------------------------------------------------|------------------------------------|
-| `update`      | Updates the `Tags` instance(s) similar to `dict.update`          | `grid.tags[...].update(foo="bar")` |
-| `remove`      | Removes the provided keys from the `Tags` instance(s)            | `grid.tags[...].remove("foo")`     |
-| `clear`       | Removes all keys from the `Tags` instance(s)                     | `grid.tags[...].clear()`           |
-| `__getattr__` | Enables requesting the value(s) associated with the provided key | `grid.tags[...].foo`               |
-| `__setattr__` | Enables setting the value(s) associated with the key             | `grid.tags[...].foo = "bar"`       |
-| `__delattr__` | Enables deleting the provided key from the `Tags` instance(s)    | `del grid.tags[...].foo`           |
+#### TagsProxy.__getitem__
+This `Tags` instance is returned when indexing a single `Cell`, whereas a `TagsList` instance is returned when indexing multiple cells through the `TagsProxy`.`TagsList` is a `list` subclass which also defines all dict methods as well as `__getattr__`, `__setattr__`, and  `__delattr__`. This allows to interact with a `TagsList` instance as if it where a single `Tags` instance, effectively acting on all child `Tags` instances in one command.  
 
-`ScalarTagsSelection.__setitem__` and `BulkTagSelection.__setitem__` on the other hand allow to completely replace the `Tags` instance(s). It accepts a new `Tags` instance (a copy will be set for each `Cell` in the bulk case) or a mapping (that will be internally converted into a `Tags` instance): `grid.tags[...] = Tags(foo="bar", baz=42)` and `grid.tags[...] = {"foo": "bar", "baz": 42}` or equivalent.
+For example, `grid.tags[:].update(foo="bar")` will update all `Tags` instances in the `TagsList` returned by the `TagsProxy` (the `grid.tags[:]` part). Similarly, `grid.tags[:].pop("foo")` will pop the `foo` key from all the child `Tags` in the `TagsList` and will return the popped values in a list.  
+
+All methods accessible through `TagsProxy.__getitem__` mutate the `Tags` instances in each cells.
+
+#### TagsProxy.__setitem__
+On the other hand, when assigning through the `__setitem__` method, the `Tags` instances are not mutated but replaced. As an example, `grid.tags[0, 0] = {"foo": "bar"}` will replace the instance in the `tags` attribute of cell (0, 0). Targetting multiple multiple cells works in the same way but copies the provided `Tags` to make sure the instances are not all the same.
+
 
 ### Stencil Viewport and Scrolling  
 When a `Grid` is instantiated with `num_visible_rows` and/or `num_visible_cols`, a [Stencil](https://github.com/maejam/manim-utils) instance is added to the grid and is stored in the `grid._stencil` attribute accesible via the `grid.stencil` property. Its purpose is to hide cells that should not be visible. It is a `manim.Difference` object between the whole grid and a `SurroundingRectangle` around the visible cells that defines the viewport boundaries. The stencil is painted the same color as the scene background to give the impression that only the viewport is added to the screen. The stencil is always transformed with the grid and stays in sync with it.
