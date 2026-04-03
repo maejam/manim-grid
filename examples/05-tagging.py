@@ -1,7 +1,7 @@
 """Tag cells.
 
 This example shows how to tag cells with custom key/value metadata.
-To see how this can reveal very useful, see the examples on 'masking' and 'signals'
+To see how this can reveal very useful, see the examples on 'masking' and 'signals'.
 """
 
 from manim import *
@@ -28,7 +28,7 @@ class Tagging(Scene):
         print(type(grid.tags[0, 0].foo))  # <class 'int'>
 
         # retrieving all tags for a single cell
-        print(grid.tags[0, 0])  # {"foo": 42}
+        print(grid.tags[0, 0])  # Tags(foo=42)
         print(type(grid.tags[0, 0]))  # <class 'manim_grid.proxies.tags_proxy.Tags'>
 
         # retrieving a single tag for multiple cells
@@ -40,12 +40,9 @@ class Tagging(Scene):
         print(grid.tags[0])  # [Tags(foo=42), Tags()]
         print(type(grid.tags[0]))  # <class 'manim_grid.proxies.tags_proxy.TagsList'>
 
-        # Replacing all the tags on cell(s). Accepts a `Tags` instance or a Mapping.
-        grid.tags[1] = {"baz": False, "foo": 24}
-
         print(grid.tags)
         # [['Tags(foo=42)' 'Tags()']
-        #  ['Tags(baz=False, foo=24)' 'Tags(baz=False, foo=24)']
+        #  ['Tags(foo=42)' 'Tags()']
         #  ['Tags(foo=42)' 'Tags()']
         #  ['Tags(foo=42)' 'Tags()']
         #  ['Tags(foo=42)' 'Tags()']

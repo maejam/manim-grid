@@ -67,64 +67,10 @@ def test_mob_inserted_bulk(simple_grid, signal_monitor):
 
 
 # ----------------------------------------------------------------------
-# tags_replaced
+# tag_changed
 # ----------------------------------------------------------------------
-def test_tags_replaced_scalar(simple_grid, signal_monitor):
-    with signal_monitor("tags_replaced") as monitor:
-        old = simple_grid.tags[0, 0]
-
-        simple_grid.tags[0, 0] = {"one": 1, "two": 2}
-        event = next(monitor)
-        assert event.sender is simple_grid.cells[0, 0]
-        assert event.index == (0, 0)
-        assert event.old_tags_instance is old
-        assert event.new_tags_instance == {"one": 1, "two": 2}
-        monitor.assert_no_others()
-        monitor.assert_received(1)
-
-        simple_grid.tags[0, 0] = {"three": 3}
-        event = next(monitor)
-        assert event.sender is simple_grid.cells[0, 0]
-        assert event.index == (0, 0)
-        assert event.old_tags_instance == {"one": 1, "two": 2}
-        assert event.new_tags_instance == {"three": 3}
-        monitor.assert_received(2)
-        monitor.assert_no_others()
-
-
-def test_tags_replaced_bulk(simple_grid, signal_monitor):
-    with signal_monitor("tags_replaced") as monitor:
-        old = simple_grid.tags[0]
-
-        simple_grid.tags[0] = {"one": 1, "two": 2}
-        for col in range(3):
-            event = next(monitor)
-            assert event.sender is simple_grid.cells[0, col]
-            assert event.index == 0
-            assert event.old_tags_instance is old[col]
-            assert event.new_tags_instance == {"one": 1, "two": 2}
-        monitor.assert_received(3)
-        monitor.assert_no_others()
-
-        simple_grid.tags[:, 0] = {"three": 3}
-        for row in range(2):
-            event = next(monitor)
-            assert event.sender is simple_grid.cells[row, 0]
-            assert event.index == (slice(None, None, None), 0)
-            if row == 0:
-                assert event.old_tags_instance == {"one": 1, "two": 2}
-            else:
-                assert event.old_tags_instance == {}
-            assert event.new_tags_instance == {"three": 3}
-        monitor.assert_received(3 + 2)
-        monitor.assert_no_others()
-
-
-# ----------------------------------------------------------------------
-# tag_mutated
-# ----------------------------------------------------------------------
-def test_tag_mutated_scalar_setattr_delattr(simple_grid, signal_monitor):
-    with signal_monitor("tag_mutated") as monitor:
+def test_tag_changed_scalar_setattr_delattr(simple_grid, signal_monitor):
+    with signal_monitor("tag_changed") as monitor:
         simple_grid.tags[0, 0].one = 1
         simple_grid.tags[0, 0].two = 2
         event = next(monitor)
@@ -148,8 +94,8 @@ def test_tag_mutated_scalar_setattr_delattr(simple_grid, signal_monitor):
         monitor.assert_no_others()
 
 
-def test_tag_mutated_bulk_setattr_delattr(simple_grid, signal_monitor):
-    with signal_monitor("tag_mutated") as monitor:
+def test_tag_changed_bulk_setattr_delattr(simple_grid, signal_monitor):
+    with signal_monitor("tag_changed") as monitor:
         simple_grid.tags[:, 0].one = 1
         event = next(monitor)
         assert event.sender is simple_grid.cells[0, 0]
@@ -177,8 +123,8 @@ def test_tag_mutated_bulk_setattr_delattr(simple_grid, signal_monitor):
         monitor.assert_no_others()
 
 
-def test_tag_mutated_bulk_update(simple_grid, signal_monitor):
-    with signal_monitor("tag_mutated") as monitor:
+def test_tag_changed_bulk_update(simple_grid, signal_monitor):
+    with signal_monitor("tag_changed") as monitor:
         simple_grid.tags[:, 0].update(one=1, two=2)
         event = next(monitor)
         assert event.sender is simple_grid.cells[0, 0]
@@ -209,8 +155,8 @@ def test_tag_mutated_bulk_update(simple_grid, signal_monitor):
         monitor.assert_no_others()
 
 
-def test_tag_mutated_bulk_pop(simple_grid, signal_monitor):
-    with signal_monitor("tag_mutated") as monitor:
+def test_tag_changed_bulk_pop(simple_grid, signal_monitor):
+    with signal_monitor("tag_changed") as monitor:
         simple_grid.tags[0, 0].update(one=1, two=2)  # 2
         event = next(monitor)
         event = next(monitor)
@@ -240,8 +186,8 @@ def test_tag_mutated_bulk_pop(simple_grid, signal_monitor):
         monitor.assert_no_others()
 
 
-def test_tag_mutated_bulk_popitem(simple_grid, signal_monitor):
-    with signal_monitor("tag_mutated") as monitor:
+def test_tag_changed_bulk_popitem(simple_grid, signal_monitor):
+    with signal_monitor("tag_changed") as monitor:
         simple_grid.tags[0, :2].update(one=1, two=2)  # 4
         event = next(monitor)
         event = next(monitor)
@@ -277,8 +223,8 @@ def test_tag_mutated_bulk_popitem(simple_grid, signal_monitor):
         monitor.assert_no_others()
 
 
-def test_tag_mutated_bulk_clear(simple_grid, signal_monitor):
-    with signal_monitor("tag_mutated") as monitor:
+def test_tag_changed_bulk_clear(simple_grid, signal_monitor):
+    with signal_monitor("tag_changed") as monitor:
         simple_grid.tags[0, :2].update(one=1, two=2)  # 4
         simple_grid.tags[0].clear()  # 4
         monitor.assert_received(8)
@@ -292,8 +238,8 @@ def test_tag_mutated_bulk_clear(simple_grid, signal_monitor):
         monitor.assert_no_others()
 
 
-def test_tag_mutated_bulk_setdefault(simple_grid, signal_monitor):
-    with signal_monitor("tag_mutated") as monitor:
+def test_tag_changed_bulk_setdefault(simple_grid, signal_monitor):
+    with signal_monitor("tag_changed") as monitor:
         simple_grid.tags[0, 0].update(one=1, two=2)  # 2
         simple_grid.tags[0].setdefault("one", 0)  # 2
         monitor.assert_received(4)

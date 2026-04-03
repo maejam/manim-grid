@@ -134,22 +134,17 @@ The Grid provides access to the underlying NumPy array of cell objects via `grid
 | `grid.mobs`  | Access or assign Mobject(s) to cell(s).    | ✅ Output: Mobject/VGroup    | ✅ Input: Mobject/Sequence[Mobject] |
 | `grid.olds`  | Retrieve the previously stored Mobject(s). | ✅ Output: Mobject/VGroup    | ❌                                  |
 | `grid.rects` | Access the lattice Rectangles.             | ✅ Output: Rectangle/VGroup  | ❌                                  |
-| `grid.tags`  | Store and manipulate metadata in Cells.    | ✅ Output: Tags/TagsList     | ✅ Input: Tags or mapping           |
+| `grid.tags`  | Store and manipulate metadata in Cells.    | ✅ Output: Tags/TagsList     | ❌                                  |
 
 
 ### Tags  
 Each `Cell` holds a `Tags` instance in their `tags` attribute. This class acts as a python dictionary with dot attribute access.
 
-#### TagsProxy.__getitem__
-This `Tags` instance is returned when indexing a single `Cell`, whereas a `TagsList` instance is returned when indexing multiple cells through the `TagsProxy`.`TagsList` is a `list` subclass which also defines all dict methods as well as `__getattr__`, `__setattr__`, and  `__delattr__`. This allows to interact with a `TagsList` instance as if it where a single `Tags` instance, effectively acting on all child `Tags` instances in one command.  
+This `Tags` instance is returned when indexing a single `Cell`, whereas a `TagsList` instance is returned when indexing multiple cells through the `TagsProxy`. `TagsList` is a `list` subclass which also defines all dict methods as well as `__getattr__`, `__setattr__`, and  `__delattr__`. This allows to interact with a `TagsList` instance as if it where a single `Tags` instance, effectively acting on all child `Tags` instances in one command.  
 
-For example, `grid.tags[:].update(foo="bar")` will update all `Tags` instances in the `TagsList` returned by the `TagsProxy` (the `grid.tags[:]` part). Similarly, `grid.tags[:].pop("foo")` will pop the `foo` key from all the child `Tags` in the `TagsList` and will return the popped values in a list.  
+For example, `grid.tags[:].update(foo="bar")` will update all `Tags` instances in the `TagsList` returned by the `TagsProxy` (the `grid.tags[:]` part). Similarly, `grid.tags[:].pop("foo")` will pop the `foo` key from all the child `Tags` in the `TagsList` and will return the popped values in a list. If the `foo` key is missing in any `Tags`, it will raise a `KeyError`. Pass a default value to avoid this: `grid.tags[:].pop("foo", MISSING)`.  
 
-All methods accessible through `TagsProxy.__getitem__` mutate the `Tags` instances in each cells.
-
-#### TagsProxy.__setitem__
-On the other hand, when assigning through the `__setitem__` method, the `Tags` instances are not mutated but replaced. As an example, `grid.tags[0, 0] = {"foo": "bar"}` will replace the instance in the `tags` attribute of cell (0, 0). Targetting multiple multiple cells works in the same way but copies the provided `Tags` to make sure the instances are not all the same.
-
+All dict methods work on `TagsList` in a similar way they work on `Tags`.  
 
 ### Stencil Viewport and Scrolling  
 When a `Grid` is instantiated with `num_visible_rows` and/or `num_visible_cols`, a [Stencil](https://github.com/maejam/manim-utils) instance is added to the grid and is stored in the `grid._stencil` attribute accesible via the `grid.stencil` property. Its purpose is to hide cells that should not be visible. It is a `manim.Difference` object between the whole grid and a `SurroundingRectangle` around the visible cells that defines the viewport boundaries. The stencil is painted the same color as the scene background to give the impression that only the viewport is added to the screen. The stencil is always transformed with the grid and stays in sync with it.
@@ -185,4 +180,3 @@ class Stencil(Scene):
 
 ### Signals
 The signals system is simply implemented with the great [blinker](https://blinker.readthedocs.io/en/stable/) library.
-New signals are added sparingly only when needed. Open an issue or propose a PR if you need one that is not implemented yet.

@@ -1,5 +1,4 @@
 import contextlib
-import copy
 import keyword
 from abc import ABC, abstractmethod
 from collections import UserDict
@@ -20,9 +19,9 @@ from typing import (
 import numpy as np
 from blinker import signal
 
-from manim_grid.typing import BulkIndex, NpIndex, ScalarIndex
+from manim_grid.typing import BulkIndex, ScalarIndex
 
-from .base import MISSING, ReadableProxy, WriteableProxy
+from .base import MISSING, ReadableProxy
 
 if TYPE_CHECKING:
     from manim_grid.grid import Cell
@@ -98,8 +97,7 @@ class Tags(UserDict[str, Any], TagsBase):
         **kwargs: Any,
     ) -> None:
         self.cell = cell
-        with signal("tag_mutated").muted():
-            super().__init__(dict_, **kwargs)
+        super().__init__(dict_, **kwargs)
 
     def iter_tags(self) -> Iterator["Tags"]:
         yield self
@@ -120,7 +118,7 @@ class Tags(UserDict[str, Any], TagsBase):
         before = dict(self)
         super().__setitem__(key, value)
         assert self.cell is not None
-        signal("tag_mutated").send(
+        signal("tag_changed").send(
             self.cell,
             grid=self.cell._grid,
             before=before,
@@ -134,7 +132,7 @@ class Tags(UserDict[str, Any], TagsBase):
         before = dict(self)
         super().__delitem__(key)
         assert self.cell is not None
-        signal("tag_mutated").send(
+        signal("tag_changed").send(
             self.cell,
             grid=self.cell._grid,
             before=before,
@@ -248,11 +246,11 @@ class TagsList(list[Tags], TagsBase):
         return [tags.items() for tags in self.iter_tags()]
 
 
-class TagsProxy(ReadableProxy[Tags], WriteableProxy[Tags]):
+class TagsProxy(ReadableProxy[Tags]):
     """Proxy that forwards attribute access to the ``tags`` field of each Cell.
 
-    It returns a Tags or TagsList view so that the user can request a given tag or chain
-    ``.update/.remove/.clear``... after an indexing operation.
+    It returns a Tags or TagsList object so that the user can request a given tag or
+    chain ``.update/.remove/.clear``... after an indexing operation.
 
     Examples
     --------
@@ -332,60 +330,3 @@ class TagsProxy(ReadableProxy[Tags], WriteableProxy[Tags]):
         if isinstance(subarray, Cell):
             return cast(Tags, getattr(subarray, self._attr))
         return TagsList(getattr(cell, self._attr) for cell in subarray.flat)
-
-    def __setitem__(
-        self, index: ScalarIndex | BulkIndex, value: Tags | Mapping[str, Any]
-    ) -> None:
-        from manim_grid.grid import Cell
-
-        old_tags = super().__getitem__(index)
-        super().__setitem__(index, value)
-        new_tags = super().__getitem__(index)
-        cells = self._grid.cells[cast(NpIndex, index)]
-        cells_list = [cells] if isinstance(cells, Cell) else list(cells.flat)  # type: ignore[arg-type]
-        num_cells = len(cells_list)
-
-        for i, (old, new, cell_) in enumerate(
-            zip(old_tags.iter_tags(), new_tags.iter_tags(), cells_list, strict=True)
-        ):
-            cell = cast(Cell, cell_)
-            is_first = i == 0
-            is_last = i == num_cells - 1
-            signal("tags_replaced").send(
-                cell,
-                grid=cell._grid,
-                old_tags_instance=old,
-                new_tags_instance=new,
-                index=index,
-                is_first_in_batch=is_first,
-                is_last_in_batch=is_last,
-            )
-
-    def _postprocess_set(
-        self,
-        subarray: "Cell | np.ndarray",
-        value: Tags | Mapping[str, Any],
-        **_: Any,
-    ) -> None:
-        """Replace the ``tags`` attribute on the selected cells.
-
-        Accept a ready-made Tags instance or any mapping that can become one.
-        """
-        if isinstance(subarray, np.ndarray):
-            for cell in subarray.flat:
-                value = self._make_tags_instance(value, cell)
-                setattr(cell, self._attr, copy.deepcopy(value))
-        else:
-            value = self._make_tags_instance(value, subarray)
-            setattr(subarray, self._attr, value)
-
-    def _make_tags_instance(
-        self, value: Tags | Mapping[str, Any], cell: "Cell"
-    ) -> Tags:
-        """Transform Mapping -> Tags, return Tags unchanged, reject everything else."""
-        if not isinstance(value, Tags):  # Tags is a Mapping
-            if isinstance(value, Mapping):
-                value = Tags(value, cell=cell)
-            else:
-                raise TypeError("TagsProxy expects a Tags instance or a mapping.")
-        return value
