@@ -2,6 +2,7 @@ import contextlib
 import copy
 import keyword
 from abc import ABC, abstractmethod
+from collections import UserDict
 from collections.abc import (
     ItemsView,
     Iterator,
@@ -17,13 +18,29 @@ from typing import (
 )
 
 import numpy as np
+from blinker import signal
 
-from manim_grid.typing import BulkIndex, ScalarIndex
+from manim_grid.typing import BulkIndex, NpIndex, ScalarIndex
 
 from .base import MISSING, ReadableProxy, WriteableProxy
 
 if TYPE_CHECKING:
     from manim_grid.grid import Cell
+
+
+class _DeletedSentinel:
+    """Sentinel object used to signal that a tag was deleted."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "<DELETED>"
+
+
+DELETED = _DeletedSentinel()
+
+# A sentinel for default parameters where everything else is valid
+_NODEFAULT = object()
 
 
 class TagsBase(ABC):
@@ -34,6 +51,9 @@ class TagsBase(ABC):
     """
 
     def __setattr__(self, name: str, value: Any) -> None:
+        if name in {"data", "cell"}:
+            object.__setattr__(self, name, value)
+            return
         for tags in self.iter_tags():
             tags[name] = value
 
@@ -52,21 +72,34 @@ class TagsBase(ABC):
     def iter_tags(self) -> Iterator["Tags"]: ...
 
 
-class Tags(dict[str, Any], TagsBase):
+class Tags(UserDict[str, Any], TagsBase):
     """Store user-defined tags.
 
-    This is a dictionary subclass with dot notation attribute access and key validation.
+    A dict-like class with dot notation attribute access and key validation.
 
     Parameters
     ----------
-    **tags
-        Initial key/value pairs tags to store.
+    dict_
+        A dictionnary used to initialize the Tags keys/values.
+    cell
+        The Cell instance this Tags belongs to. Leave at `None`: it will populated by
+        `Grid.__init__` and `TagsProxy.__setitem__`.
+    **kwargs
+        Initial key/value pairs tags to store. If both `dict_` and `kwargs` set the same
+        key, `kwargs` will take precedence.
     """
 
-    def __init__(self, **tags: Any) -> None:
-        for k in tags:
-            self._validate_key(k)
-        super().__init__(tags)
+    def __init__(
+        self,
+        dict_: Mapping[str, Any] | None = None,
+        /,
+        *,
+        cell: "Cell|None" = None,
+        **kwargs: Any,
+    ) -> None:
+        self.cell = cell
+        with signal("tag_mutated").muted():
+            super().__init__(dict_, **kwargs)
 
     def iter_tags(self) -> Iterator["Tags"]:
         yield self
@@ -82,8 +115,43 @@ class Tags(dict[str, Any], TagsBase):
             raise KeyError(f"Tag key {key!r} is not a valid Python identifier.")
 
     def __setitem__(self, key: str, value: Any) -> None:
+        """Send signal when setting tags."""
         self._validate_key(key)
+        before = dict(self)
         super().__setitem__(key, value)
+        assert self.cell is not None
+        signal("tag_mutated").send(
+            self.cell,
+            grid=self.cell._grid,
+            before=before,
+            after=dict(self),
+            key=key,
+            value=value,
+        )
+
+    def __delitem__(self, key: str) -> None:
+        """Send signal when deleting tags."""
+        before = dict(self)
+        super().__delitem__(key)
+        assert self.cell is not None
+        signal("tag_mutated").send(
+            self.cell,
+            grid=self.cell._grid,
+            before=before,
+            after=dict(self),
+            key=key,
+            value=DELETED,
+        )
+
+    def popitem(self) -> tuple[(str, Any)]:
+        """Override because UserDict.popitem does not call __delitem__."""
+        if not self.data:
+            raise KeyError("popitem(): this 'Tags' dictionary is empty.")
+        last_key = next(reversed(self.data))
+        value = self.data[last_key]
+
+        del self[last_key]
+        return last_key, value
 
     def __repr__(self) -> str:
         attrs = ", ".join(f"{key}={value!r}" for key, value in self.items())
@@ -116,18 +184,41 @@ class TagsList(list[Tags], TagsBase):
         for tags in self.iter_tags():
             tags.update(*args, **kwargs)
 
-    def pop(self, key: str, *default: Any) -> Any:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+    def pop(self, key: str, default: Any = _NODEFAULT) -> Any:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+        """Pop a key/value pair from all Tags in the TagsList.
+
+        If no default is passed and keys are missing, it will raise.
+        If a default is passed, then this default will be returned in place of the
+        missing keys.
+        """
         results = []
+        # ensure atomicity: all or nothing
+        # first, get values
         for tags in self.iter_tags():
-            if default:
-                results.append(tags.pop(key, default[0]))
+            if default is not _NODEFAULT:
+                results.append(tags.get(key, default))
             else:
-                results.append(tags.pop(key))
+                results.append(tags[key])
+
+        # everything succeeded -> mutate tags
+        for tags in self.iter_tags():
+            tags.pop(key, default)
+
         return results
 
     def popitem(self) -> list[tuple[str, Any]]:
+        """Pop the last key/value item from all Tags in the TagsList.
+
+        Will always raise on empty Tags dictionaries.
+        """
+        if any(len(tags) == 0 for tags in self.iter_tags()):
+            raise KeyError(
+                "popitem(): at least one empty `Tags` dictionary in the selected cells."
+            )
+
         results = []
         for tags in self.iter_tags():
+            # tags.popitem() is not FIFO
             results.append(tags.popitem())
         return results
 
@@ -245,7 +336,30 @@ class TagsProxy(ReadableProxy[Tags], WriteableProxy[Tags]):
     def __setitem__(
         self, index: ScalarIndex | BulkIndex, value: Tags | Mapping[str, Any]
     ) -> None:
+        from manim_grid.grid import Cell
+
+        old_tags = super().__getitem__(index)
         super().__setitem__(index, value)
+        new_tags = super().__getitem__(index)
+        cells = self._grid.cells[cast(NpIndex, index)]
+        cells_list = [cells] if isinstance(cells, Cell) else list(cells.flat)  # type: ignore[arg-type]
+        num_cells = len(cells_list)
+
+        for i, (old, new, cell_) in enumerate(
+            zip(old_tags.iter_tags(), new_tags.iter_tags(), cells_list, strict=True)
+        ):
+            cell = cast(Cell, cell_)
+            is_first = i == 0
+            is_last = i == num_cells - 1
+            signal("tags_replaced").send(
+                cell,
+                grid=cell._grid,
+                old_tags_instance=old,
+                new_tags_instance=new,
+                index=index,
+                is_first_in_batch=is_first,
+                is_last_in_batch=is_last,
+            )
 
     def _postprocess_set(
         self,
@@ -257,14 +371,21 @@ class TagsProxy(ReadableProxy[Tags], WriteableProxy[Tags]):
 
         Accept a ready-made Tags instance or any mapping that can become one.
         """
-        if not isinstance(value, Tags):
-            if isinstance(value, Mapping):
-                value = Tags(**value)
-            else:
-                raise TypeError("TagsProxy expects a Tags instance or a mapping.")
-
         if isinstance(subarray, np.ndarray):
             for cell in subarray.flat:
+                value = self._make_tags_instance(value, cell)
                 setattr(cell, self._attr, copy.deepcopy(value))
         else:
+            value = self._make_tags_instance(value, subarray)
             setattr(subarray, self._attr, value)
+
+    def _make_tags_instance(
+        self, value: Tags | Mapping[str, Any], cell: "Cell"
+    ) -> Tags:
+        """Transform Mapping -> Tags, return Tags unchanged, reject everything else."""
+        if not isinstance(value, Tags):  # Tags is a Mapping
+            if isinstance(value, Mapping):
+                value = Tags(value, cell=cell)
+            else:
+                raise TypeError("TagsProxy expects a Tags instance or a mapping.")
+        return value

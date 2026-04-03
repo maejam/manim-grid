@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from manim_grid.exceptions import GridValueError
-from manim_grid.grid import EmptyMobject, Grid
+from manim_grid.grid import Cell, EmptyMobject, Grid
 from manim_grid.proxies.tags_proxy import MISSING, Tags, TagsList
 
 
@@ -217,23 +217,28 @@ def test_tagsproxy_getitem_setitem(simple_grid: Grid):
     assert simple_grid.tags[0, 0] is not simple_grid.tags[0, 1]
 
 
-def test_tags_str():
-    tags = Tags(one=1, two=2)
-    assert str(tags) == "Tags(one=1, two=2)"
+@pytest.fixture
+def cell(simple_grid: Grid):
+    return Cell(simple_grid, m.Rectangle(), 1, 2)
 
 
-def test_tags_list_str():
-    tags = TagsList([Tags(one=1, two=2), Tags(three=3)])
+def test_tags_str(cell: Cell):
+    tags = Tags(foo=1, bar=2, cell=cell)
+    assert str(tags) == "Tags(foo=1, bar=2)"
+
+
+def test_tags_list_str(cell: Cell):
+    tags = TagsList([Tags(one=1, two=2, cell=cell), Tags(three=3, cell=cell)])
     assert str(tags) == "[Tags(one=1, two=2), Tags(three=3)]"
 
 
-def test_tags_repr():
-    tags = Tags(one=1, two=2)
+def test_tags_repr(cell: Cell):
+    tags = Tags(one=1, two=2, cell=cell)
     assert repr(tags) == "Tags(one=1, two=2)"
 
 
-def test_tagslist_repr():
-    tags = TagsList([Tags(one=1, two=2), Tags(three=3)])
+def test_tagslist_repr(cell: Cell):
+    tags = TagsList([Tags(one=1, two=2, cell=cell), Tags(three=3, cell=cell)])
     assert str(tags) == "[Tags(one=1, two=2), Tags(three=3)]"
 
 
@@ -260,26 +265,26 @@ def test_tagslist_setattr_getattr_and_delattr(simple_grid: Grid):
     assert simple_grid.tags[1, :] == [{"baz": 42}, {}, {}]
 
 
-def test_tags_validate_key(simple_grid: Grid):
+def test_tags_validate_key(simple_grid: Grid, cell: Cell):
     with pytest.raises(KeyError, match="may not start with '_'"):
         simple_grid.tags[0, 0]._foo = "bar"
 
     with pytest.raises(KeyError, match="is a reserved keyword"):
-        simple_grid.tags[0, 0] = Tags(**{"class": 1})
+        simple_grid.tags[0, 0] = Tags(cell=cell, **{"class": 1})
 
     with pytest.raises(KeyError, match="is not a valid Python identifier"):
-        simple_grid.tags[0, 0] = Tags(**{"1foo": 1})
+        simple_grid.tags[0, 0] = Tags(cell=cell, **{"1foo": 1})
 
 
-def test_tagslist_validate_key(simple_grid: Grid):
+def test_tagslist_validate_key(simple_grid: Grid, cell: Cell):
     with pytest.raises(KeyError, match="may not start with '_'"):
         simple_grid.tags[0, :]._foo = "bar"
 
     with pytest.raises(KeyError, match="is a reserved keyword"):
-        simple_grid.tags[0, :] = Tags(**{"class": 1})
+        simple_grid.tags[0, :] = Tags(cell=cell, **{"class": 1})
 
     with pytest.raises(KeyError, match="is not a valid Python identifier"):
-        simple_grid.tags[0, :] = Tags(**{"1foo": 1})
+        simple_grid.tags[0, :] = Tags(cell=cell, **{"1foo": 1})
 
 
 def test_tagslist_update(simple_grid: Grid):
@@ -301,6 +306,7 @@ def test_tagslist_popitem(simple_grid: Grid):
     res = simple_grid.tags[0].popitem()
     assert res == [("baz", 42)] * 3
     assert simple_grid.tags[0] == [{"foo": "bar"}] * 3
+    assert simple_grid.tags[1] == [{"foo": "bar", "baz": 42}] * 3
 
 
 def test_tagslist_clear(simple_grid: Grid):

@@ -52,12 +52,13 @@ class Cell:
     rect: m.Rectangle = field(repr=False)
     row_index: int
     col_index: int
-    mob: m.Mobject = field(default_factory=EmptyMobject)
-    old: m.Mobject = field(default_factory=EmptyMobject)
-    tags: Tags = field(default_factory=Tags)
+    mob: m.Mobject = field(default_factory=EmptyMobject, repr=False)
+    old: m.Mobject = field(default_factory=EmptyMobject, repr=False)
+    tags: Tags = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self._grid.add(self.rect.set_opacity(0), self.old, self.mob)
+        self.tags = Tags(cell=self)
 
     def insert_mob(
         self,

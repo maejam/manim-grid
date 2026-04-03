@@ -54,8 +54,7 @@ mob_inserted = signal(
     Data
     ----
     sender
-        The cell instance. The following Cell attributes are accessible:
-        `.mob`, `.old`, `.rect`, `.tags`, `.row_index` and `.col_index`.
+        The Cell instance.
     grid
         The grid that cell belongs to.
 
@@ -76,5 +75,93 @@ mob_inserted = signal(
     See Also
     --------
     mobs_added
+    """,
+)
+
+tags_replaced = signal(
+    "tags_replaced",
+    doc="""Emitted when the Tags instance is replaced on  a cell.
+
+    This signal is sent when users call `grid.tags[index] = {...}`, thus replacing
+    (as opposed to mutating) the Tags instance(s) on the targeted cell(s). As many
+    signals as targeted cells are sent. To act on the whole batch at once, use the
+    `is_first_in_batch` and `is_last_in_batch` flags.
+
+    Data
+    ----
+    sender
+        The Cell instance.
+    grid
+        The Grid instance.
+    old_tags_instance
+        The replaced Tags instance.
+    new_tags_instance
+        The Tags instance assigned to the cell.
+    index
+        The index passed to `grid.tags`. It is either a tuple `(row_key, col_key)` or a
+        single `row_key` where row_key and col_key can be anything supported by the
+        proxies (int, label, slice, array...). Can be used to index any proxy to resolve
+        to the same cells. This signal is sent for each Cell targeted by the `index`.
+    is_first_in_batch
+        Because many cells can be targeted by the index and one signal is sent for each
+        cell, this flag lets you know if this signal is the first sent for this batch of
+        cells.
+    is_last_in_batch
+        Similar to `is_first_in_batch` for the last signal in the batch.
+
+    Return Value
+    ------------
+    None
+
+    Example
+    -------
+
+    See Also
+    --------
+    tag_mutated
+    """,
+)
+
+tag_mutated = signal(
+    "tag_mutated",
+    doc="""Emitted when a tag value is changed or deleted.
+
+    Unlike `tags_replaced`, the Tags instance is not replaced but simply mutated.
+
+    Data
+    ----
+    sender
+        The Cell instance.
+    grid
+        The Grid instance.
+    before
+        The Tags instance state before mutation (dict).
+    after
+        The Tags instance state after mutation (dict).
+    key
+        The mutated key (str).
+    value
+        The assigned value. `DELETED` for a key deletion operation.
+
+    Return Value
+    ------------
+    None
+
+    Examples
+    --------
+    >>> # add the value as a Text mobject when a given tag key is inserted
+
+    >>> @tag_mutated.connect
+    >>> def add_as_Text(cell, grid, before, after, key, value):
+    >>>     if key == "special_key":
+    >>>         if value is not DELETED:
+    >>>             txt = grid.mobs[cell.row_index, cell.col_index] = Text(value)
+    >>>             grid.add(txt)
+    >>>         else:
+    >>>             grid.remove(grid.mobs[cell.row_index, cell.col_index])
+
+    See Also
+    --------
+    tag_mutated
     """,
 )
