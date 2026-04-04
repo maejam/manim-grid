@@ -489,66 +489,6 @@ class Grid(m.Group):
             self._frame = m.Difference(vmobject, self.viewport).match_style(vmobject)
             self.add(self._frame)
 
-    @property
-    def has_uniform_rows(self) -> bool:
-        """Return ``True`` iff all the grid rows have the same height."""
-        return len(set(self._row_heights)) == 1
-
-    @property
-    def has_uniform_cols(self) -> bool:
-        """Return ``True`` iff all the grid cols have the same width."""
-        return len(set(self._col_widths)) == 1
-
-    def scroll(self, direction: Vector3DLike, step: int) -> Self:
-        """Scroll the grid horizontally and/or vertically.
-
-        Parameters
-        ----------
-        direction
-            The direction in which to scroll. Any manim `Vector3DLike` will do.
-        step
-            The number of cells to scroll for.
-
-        Returns
-        -------
-        Self
-            The grid itself. This allows to animate the scrolling and chain animations:
-            `self.play(grid.animate.scroll(DOWN, 3).set_color(RED))`
-
-        Raises
-        ------
-        GridStencilError
-            If no stencil is defined.
-        GridShapeError
-            If the grid does not have uniform row heights for vertical scrolling or
-            uniform column widths for horizontal scrolling.
-        """
-        if self._stencil is None:
-            raise GridStencilError(
-                "A grid without a stencil cannot be scrolled. "
-                "Define `num_visible_rows` or `num_visible_cols` or both."
-            )
-
-        if direction[0] != 0 and not self.has_uniform_cols:
-            raise GridShapeError(
-                "In order to scroll horizontally, the grid must have "
-                "uniform column widths."
-            )
-
-        if direction[1] != 0 and not self.has_uniform_rows:
-            raise GridShapeError(
-                "In order to scroll vertically, the grid must have uniform row heights."
-            )
-
-        offset = self._compute_scroll_offset(direction, step)
-        # stencil.clip and grid.frame should not be shifted
-        with self.keep_viewport_static():
-            self.shift(offset)
-
-        # make sure the stencil is recomputed even with no further animation
-        self.stencil.update()
-        return self
-
     @contextmanager
     def keep_viewport_static(self) -> Generator[None, None, None]:
         """Keep the viewport in place while this context manager is active.
@@ -582,6 +522,73 @@ class Grid(m.Group):
             self.add(self.frame)
         self.add(self.viewport)
 
+    @property
+    def has_uniform_rows(self) -> bool:
+        """Return ``True`` iff all the grid rows have the same height."""
+        return len(set(self._row_heights)) == 1
+
+    @property
+    def has_uniform_cols(self) -> bool:
+        """Return ``True`` iff all the grid cols have the same width."""
+        return len(set(self._col_widths)) == 1
+
+    def scroll(self, direction: Vector3DLike, step: int) -> Self:
+        """Scroll the grid horizontally and/or vertically a given number of cells.
+
+        This method scrolls the Grid an integer number of rows/columns. The Grid must
+        have uniform cell size in the direction of the scrolling.
+
+        Parameters
+        ----------
+        direction
+            The direction in which to scroll. Any manim `Vector3DLike` will do.
+        step
+            The number of cells to scroll for.
+
+        Returns
+        -------
+        Self
+            The grid itself. This allows to animate the scrolling and chain animations:
+            `self.play(grid.animate.scroll(DOWN, 3).set_color(RED))`
+
+        Raises
+        ------
+        GridStencilError
+            If no stencil is defined.
+        GridShapeError
+            If the grid does not have uniform row heights for vertical scrolling or
+            uniform column widths for horizontal scrolling.
+
+        See Also
+        --------
+        :meth:`free_scroll`
+        """
+        if self._stencil is None:
+            raise GridStencilError(
+                "A grid without a stencil cannot be scrolled. "
+                "Define `num_visible_rows` or `num_visible_cols` or both."
+            )
+
+        if direction[0] != 0 and not self.has_uniform_cols:
+            raise GridShapeError(
+                "In order to scroll horizontally, the grid must have "
+                "uniform column widths."
+            )
+
+        if direction[1] != 0 and not self.has_uniform_rows:
+            raise GridShapeError(
+                "In order to scroll vertically, the grid must have uniform row heights."
+            )
+
+        offset = self._compute_scroll_offset(direction, step)
+        # stencil.clip and grid.frame should not be shifted
+        with self.keep_viewport_static():
+            self.shift(offset)
+
+        # make sure the stencil is recomputed even with no further animation
+        self.stencil.update()
+        return self
+
     def _compute_scroll_offset(
         self, direction: Vector3DLike, step: int
     ) -> np.ndarray[tuple[int, int, int], np.dtype[np.float64]]:
@@ -612,3 +619,45 @@ class Grid(m.Group):
             * step
         )
         return np.array(offset)
+
+    def free_scroll(self, direction: Vector3DLike, munits: float) -> Self:
+        """Scroll the grid horizontally and/or vertically in a free way.
+
+        Unlike :meth:`scroll`, the cell size does not have to be uniform in the
+        direction of the scrolling.
+
+        Parameters
+        ----------
+        direction
+            The direction in which to scroll. Any manim `Vector3DLike` will do.
+        munits
+            The number of munits to scroll for.
+
+        Raises
+        ------
+        GridStencilError
+            If no stencil is defined.
+
+        Returns
+        -------
+        Self
+            The grid itself. This allows to animate the scrolling and chain animations:
+            `self.play(grid.animate.scroll(DOWN, 3).set_color(RED))`
+
+        See Also
+        --------
+        :meth:`scroll`
+        """
+        if self._stencil is None:
+            raise GridStencilError(
+                "A grid without a stencil cannot be scrolled. "
+                "Define `num_visible_rows` or `num_visible_cols` or both."
+            )
+
+        # stencil.clip and grid.frame should not be shifted
+        with self.keep_viewport_static():
+            self.shift(np.array(direction) * -munits)
+
+        # make sure the stencil is recomputed even with no further animation
+        self.stencil.update()
+        return self

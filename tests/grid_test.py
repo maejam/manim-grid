@@ -223,6 +223,8 @@ def test_scrolling_without_a_stencil_raises():
     g = Grid([1, 1], [1, 1, 1])
     with pytest.raises(GridStencilError, match="A grid without a stencil"):
         g.scroll(m.DOWN, 1)
+    with pytest.raises(GridStencilError, match="A grid without a stencil"):
+        g.free_scroll(m.DOWN, 1)
 
 
 def test_vertical_scroll_non_uniform_rows_raises(simple_grid: Grid):
