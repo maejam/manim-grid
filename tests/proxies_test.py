@@ -141,6 +141,17 @@ def test_bulk_assignment_with_sequence(simple_grid):
     assert list(simple_grid.olds[:]) == list(olds)
 
 
+def test_bulk_assignment_with_vgroup(simple_grid):
+    olds = simple_grid.mobs[:]
+    objs = m.VGroup([m.Circle() for _ in range(6)])
+    simple_grid.mobs[:] = objs
+
+    assert isinstance(simple_grid.mobs[:], m.VGroup)
+    assert isinstance(simple_grid.olds[:], m.VGroup)
+    assert list(simple_grid.mobs[:]) == list(objs)
+    assert list(simple_grid.olds[:]) == list(olds)
+
+
 def test_error_when_assigning_non_mobject(simple_grid):
     with pytest.raises(
         GridValueError, match="Only a single Mobject can be assigned to a single Cell"

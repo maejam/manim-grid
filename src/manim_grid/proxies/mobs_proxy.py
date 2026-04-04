@@ -93,13 +93,13 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
 
     @overload
     def __setitem__(
-        self, index: BulkIndex | AlignedBulkIndex, value: Sequence[m.Mobject]
+        self, index: BulkIndex | AlignedBulkIndex, value: Sequence[m.Mobject] | m.VGroup
     ) -> None: ...
 
     def __setitem__(
         self,
         index: ScalarIndex | AlignedScalarIndex | BulkIndex | AlignedBulkIndex,
-        value: m.Mobject | Sequence[m.Mobject],
+        value: m.Mobject | Sequence[m.Mobject] | m.VGroup,
     ) -> None:
         super().__setitem__(index, value)
         mobs = [value] if isinstance(value, m.Mobject) else value
@@ -183,7 +183,7 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
             subarray.insert_mob(value, alignment, self._margin)
             return
 
-        if not isinstance(value, Sequence):
+        if not isinstance(value, (Sequence, m.VGroup)):
             raise GridValueError("Bulk assignment requires a sequence of Mobjects.")
         num_cells = int(np.prod(subarray.shape))
         num_vals = len(value)

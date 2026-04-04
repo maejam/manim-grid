@@ -129,12 +129,12 @@ Each `Cell` holds:
 ### Proxies  
 The Grid provides access to the underlying NumPy array of cell objects via `grid.cells`. It also defines four proxy objects that give convenient, NumPy-style access to the cell attributes described above. These proxies return as outputs and take in as inputs different types of objects whether you are targeting individual cells or multiple cells at the same time. e.g.: `grid.mobs[0,0]` returns a Mobject, while `grid.mobs[:]` returns a VGroup of all mobjects contained in the grid, in row-major order. The table below summarizes the expected inputs and the returned outputs for each proxy (single cell/bulk):
 
-| Proxy        | Purpose                                    | Readable (`__getitem__`)     | Writeable (`__setitem__`)           |
-|--------------|--------------------------------------------|------------------------------|-------------------------------------|
-| `grid.mobs`  | Access or assign Mobject(s) to cell(s).    | ✅ Output: Mobject/VGroup    | ✅ Input: Mobject/Sequence[Mobject] |
-| `grid.olds`  | Retrieve the previously stored Mobject(s). | ✅ Output: Mobject/VGroup    | ❌                                  |
-| `grid.rects` | Access the lattice Rectangles.             | ✅ Output: Rectangle/VGroup  | ❌                                  |
-| `grid.tags`  | Store and manipulate metadata in Cells.    | ✅ Output: Tags/TagsList     | ❌                                  |
+| Proxy        | Purpose                                    | Readable (`__getitem__`)     | Writeable (`__setitem__`)                 |
+|--------------|--------------------------------------------|------------------------------|-------------------------------------------|
+| `grid.mobs`  | Access or assign Mobject(s) to cell(s).    | ✅ Output: Mobject/VGroup    | ✅ Input: Mobject/Sequence[Mobject]|VGoup |
+| `grid.olds`  | Retrieve the previously stored Mobject(s). | ✅ Output: Mobject/VGroup    | ❌                                        |
+| `grid.rects` | Access the lattice Rectangles.             | ✅ Output: Rectangle/VGroup  | ❌                                        |
+| `grid.tags`  | Store and manipulate metadata in Cells.    | ✅ Output: Tags/TagsList     | ❌                                        |
 
 
 ### Tags  
