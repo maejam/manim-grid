@@ -59,6 +59,7 @@ class Cell:
     def __post_init__(self) -> None:
         self._grid.add(self.rect.set_opacity(0), self.old, self.mob)
         self.tags = Tags(cell=self)
+        self.alignment = m.ORIGIN
 
     def insert_mob(
         self,
@@ -88,7 +89,10 @@ class Cell:
         """
         self.old = self.mob
         self.mob = mob
-        self.mob.move_to(self.rect, aligned_edge=alignment).shift(-alignment * margin)
+        self.alignment = alignment if alignment is not None else self.alignment
+        self.mob.move_to(self.rect, aligned_edge=self.alignment).shift(
+            -self.alignment * margin
+        )
         signal("mob_inserted").send(self, grid=self._grid)
 
 

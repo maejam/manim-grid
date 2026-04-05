@@ -140,7 +140,7 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
             # Necessary to pass assertion below.
             idx = index[:-1][0] if len(index[:-1]) == 1 else index[:-1]
         else:
-            alignment = m.ORIGIN
+            alignment = None
             idx = cast(ScalarIndex | BulkIndex, index)
         assert is_scalar_index(idx) or is_bulk_index(idx)
         return idx, value, {"alignment": alignment}

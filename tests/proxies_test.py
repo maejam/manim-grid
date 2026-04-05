@@ -112,10 +112,16 @@ def test_mobs_proxy_basic_assignment_and_retrieval(simple_grid):
 
 
 def test_alignment_vector_is_respected(simple_grid, dummy_mob):
-    # default: m.ORIGIN.
+    # default default: m.ORIGIN.
     idx = (1, 1)
     simple_grid.mobs[idx] = dummy_mob
     assert np.array_equal(dummy_mob.aligned_edge, m.ORIGIN)
+
+    # default: last alignment in cell.
+    simple_grid.mobs[1, 1, m.UP] = dummy_mob
+    assert np.array_equal(dummy_mob.aligned_edge, m.UP)
+    simple_grid.mobs[1, 1] = dummy_mob
+    assert np.array_equal(dummy_mob.aligned_edge, m.UP)
 
     # tuple alignment.
     tup_alignment = (0.2, 0.5, 0.0)
