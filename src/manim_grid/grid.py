@@ -137,11 +137,9 @@ class Grid(m.Group):
             :meth:`Cell.insert_mob`). Accepts the same scalar/tuple convention as
             ``buff``.
         row_labels
-            Optional sequence of strings that label the rows. If omitted, numeric
-            strings (``"1"``, ``"2"``, ...) are generated automatically.
+            Optional sequence of strings that label the rows.
         col_labels
-            Optional sequence of strings that label the columns. Same fallback behaviour
-            as ``row_labels``.
+            Optional sequence of strings that label the columns.
         num_visible_rows
             The number of rows that should be visible. A :class:`manim_utils.Stencil`
             will be used to cover the hidden rows. This stencil is accessible through
@@ -187,6 +185,8 @@ class Grid(m.Group):
         self._row_labels = self._prepare_labels(row_labels, num_rows)
         self._col_labels = self._prepare_labels(col_labels, num_cols)
         self._label_mapper = LabelMapper(self._row_labels, self._col_labels)
+        self._row_numbers = list(range(num_rows))
+        self._col_numbers = list(range(num_cols))
 
         self.cells, self.lattice = self._prepare_grid(
             num_rows, num_cols, row_heights, col_widths, self._buff
@@ -316,9 +316,6 @@ class Grid(m.Group):
     def _prepare_labels(labels: Sequence[str], num: int) -> dict[str, int]:
         """Map a sequence of labels to integer indices.
 
-        If *labels* is empty, numeric strings ``"1"``, ``"2"``, ... up to ``num`` are
-        generated automatically.
-
         Parameters
         ----------
         labels
@@ -338,7 +335,7 @@ class Grid(m.Group):
             If a non-empty *labels* sequence does not contain exactly ``num`` elements.
         """
         if labels == ():
-            labels = tuple(map(str, range(1, num + 1)))
+            return {}
 
         nums = range(num)
         if len(nums) != len(labels):
@@ -374,6 +371,32 @@ class Grid(m.Group):
 
         """
         return [m.Text(label, **kwargs) for label in self._col_labels]
+
+    def row_numbers(self, **kwargs: Any) -> list[m.Text]:
+        """Return the row numbers as a list of Text Mobjects.
+
+        This is a convenience method meant to easily add the numbers to the grid.
+
+        Parameters
+        ----------
+        kwargs
+            Keyword arguments passed to the `Text` constructor.
+
+        """
+        return [m.Text(str(num), **kwargs) for num in self._row_numbers]
+
+    def col_numbers(self, **kwargs: Any) -> list[m.Text]:
+        """Return the column numbers as a list of Text Mobjects.
+
+        This is a convenience method meant to easily add the numbers to the grid.
+
+        Parameters
+        ----------
+        kwargs
+            Keyword arguments passed to the `Text` constructor.
+
+        """
+        return [m.Text(str(num), **kwargs) for num in self._col_numbers]
 
     def _prepare_grid(
         self,

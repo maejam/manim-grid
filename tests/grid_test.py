@@ -77,14 +77,14 @@ def test_fullscreen_grid_with_invalid_num_rows_cols_raises(num_rows, num_cols):
 
 
 # ----------------------------------------------------------------------
-# Grid - labels
+# Grid - labels / numbers
 # ----------------------------------------------------------------------
-def test_prepare_labels_defaults():
+def test_prepare_labels_empty_labels():
     row_labels = Grid._prepare_labels((), 2)
     col_labels = Grid._prepare_labels((), 3)
 
-    assert row_labels == {"1": 0, "2": 1}
-    assert col_labels == {"1": 0, "2": 1, "3": 2}
+    assert row_labels == {}
+    assert col_labels == {}
 
 
 def test_prepare_labels_custom():
@@ -99,8 +99,8 @@ def test_prepare_labels_custom():
 
 def test_label_mapper_is_populated(simple_grid):
     lm = simple_grid._label_mapper
-    assert lm.row_labels == {"1": 0, "2": 1}
-    assert lm.col_labels == {"1": 0, "2": 1, "3": 2}
+    assert lm.row_labels == {}
+    assert lm.col_labels == {}
 
 
 def test_prepare_label_with_wrong_number_raises():
@@ -108,6 +108,31 @@ def test_prepare_label_with_wrong_number_raises():
         ValueError, match="The number of labels should match the number of rows/columns"
     ):
         Grid._prepare_labels(["one", "two"], 3)
+
+
+def test_row_col_numbers_are_correct(simple_grid: Grid):
+    assert simple_grid._row_numbers == [0, 1]
+    assert simple_grid._col_numbers == [0, 1, 2]
+
+
+def test_labels_convenience_methods():
+    g = Grid([1] * 4, [1], col_labels=["only"])
+    assert g.row_labels(font_size=12) == []
+    lab = g.col_labels(font_size=12)
+    assert len(lab) == 1
+    assert isinstance(lab[0], m.Text)
+    assert lab[0].font_size == 12
+
+
+def test_numbers_convenience_methods(simple_grid: Grid):
+    rowno = simple_grid.row_numbers(font_size=14)
+    colno = simple_grid.col_numbers(font_size=16)
+    assert len(rowno) == 2
+    assert len(colno) == 3
+    assert all(isinstance(r, m.Text) for r in rowno)
+    assert all(isinstance(c, m.Text) for c in colno)
+    assert all(r.font_size == 14 for r in rowno)
+    assert all(c.font_size == 16 for c in colno)
 
 
 # ----------------------------------------------------------------------
