@@ -12,9 +12,11 @@ from manim_utils import Stencil
 from manim_grid.exceptions import (
     GridError,
     GridFrameError,
+    GridLabelError,
     GridShapeError,
     GridStencilError,
 )
+from manim_grid.helpers import TrackedApplyMethod
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
@@ -185,8 +187,6 @@ class Grid(m.Group):
         self._row_labels = self._prepare_labels(row_labels, num_rows)
         self._col_labels = self._prepare_labels(col_labels, num_cols)
         self._label_mapper = LabelMapper(self._row_labels, self._col_labels)
-        self._row_numbers = list(range(num_rows))
-        self._col_numbers = list(range(num_cols))
 
         self.cells, self.lattice = self._prepare_grid(
             num_rows, num_cols, row_heights, col_widths, self._buff
@@ -338,7 +338,7 @@ class Grid(m.Group):
             return {}
 
         nums = range(num)
-        if len(nums) != len(labels):
+        if num != len(labels):
             raise ValueError(
                 "The number of labels should match the number of rows/columns. "
                 f"({len(labels)} != {num})."
@@ -383,7 +383,8 @@ class Grid(m.Group):
             Keyword arguments passed to the `Text` constructor.
 
         """
-        return [m.Text(str(num), **kwargs) for num in self._row_numbers]
+        num_rows = len(self._row_heights)
+        return [m.Text(str(num + 1), **kwargs) for num in range(num_rows)]
 
     def col_numbers(self, **kwargs: Any) -> list[m.Text]:
         """Return the column numbers as a list of Text Mobjects.
@@ -396,7 +397,8 @@ class Grid(m.Group):
             Keyword arguments passed to the `Text` constructor.
 
         """
-        return [m.Text(str(num), **kwargs) for num in self._col_numbers]
+        num_cols = len(self._col_widths)
+        return [m.Text(str(num + 1), **kwargs) for num in range(num_cols)]
 
     def _prepare_grid(
         self,
@@ -723,3 +725,287 @@ class Grid(m.Group):
         # make sure the stencil is recomputed even with no further animation
         self.stencil.update()
         return self
+
+    @contextmanager
+    def insert_row(
+        self,
+        row_index: int | str,
+        height: float | None = None,
+        label: str | None = None,
+    ) -> Generator[m.Animation, None, None]:
+        """Insert a new row in the Grid.
+
+        The Grid geometry will not be changed. Extra rows must be pre-allocated by the
+        user. This method acts as a context manager providing an opportunity to change
+        the Grid (e.g. style the new row or change displayed string labels or row
+        numbers...) before the insertion takes place and to animate this insertion.
+        Inside the context manager, the Grid is already in its post-insertion internal
+        state (e.g. the new row is accessible via `grid.mobs[row_index]`). When exiting
+        the context manager, the visual aspect of the insertion will take place.
+
+        Parameters
+        ----------
+        row_index
+            The integer index (or its string label) where the new row should be
+            inserted.
+        height
+            The height in munits of the new row. It can be omitted if the Grid has
+            uniform row heights and will default to that uniform height.
+        label
+            The string label to attribute to the newly inserted row. Must be provided
+            if and only if the other rows already have string labels.
+
+        Yields
+        ------
+        The shift animation for the rows below the inserted one. It can be played
+        directly. If not played, an instant shift will happen when exiting the context
+        manager.
+
+        Raises
+        ------
+        GridShapeError
+            If the row height is not passed for a non-uniform Grid.
+        GridLabelError
+            If a `label` for the new row is passed when the Grid does not have labels
+            defined, or if the `label` is not passed when it should be.
+
+        Examples
+        --------
+        >>> # simplest form: no pre-styling, no post-animation (instant shift)
+        >>> with grid.insert_row(3): pass
+
+        >>> # with pre-styling and post-animation
+        >>> with grid.insert_row(3, label="new_row") as anim:
+        >>>     # the grid is already in the post insertion state internally
+        >>>     grid.rects["new_row"].set_stroke(opacity=1)
+        >>>     self.play(anim, run_time=2)
+
+        """
+        if isinstance(row_index, str):
+            row_index = self._row_labels[row_index]
+
+        num_rows = len(self._row_heights)
+        num_cols = len(self._col_widths)
+
+        # update _row_heights
+        if height is None:
+            if not self.has_uniform_rows:
+                raise GridShapeError(
+                    "This Grid does not have uniform row heights. "
+                    "You must provide the height for the inserted row."
+                )
+            else:
+                height = self.lattice[0].height
+
+        self._row_heights.insert(row_index, height)
+        self._row_heights.pop()
+
+        # update _row_labels and LabelMapper
+        if label is None and self._row_labels:
+            raise GridLabelError(
+                "You must provide a string label for the inserted row."
+            )
+
+        if label is not None:
+            if not self._row_labels:
+                raise GridLabelError(
+                    "This Grid does not have labels defined. You cannot define one for "
+                    "the inserted row."
+                )
+            else:
+                labels = list(self._row_labels.keys())
+                labels.insert(row_index, label)
+                labels.pop()
+                self._row_labels = self._prepare_labels(labels, num_rows)
+
+        self._label_mapper = LabelMapper(self._row_labels, self._col_labels)
+
+        # remove last row
+        self.remove(self.mobs[-1])
+        self.remove(self.olds[-1])
+        self.remove(self.rects[-1])
+
+        # shift references
+        self.cells[row_index + 1 :, :] = self.cells[row_index:-1, :]
+
+        # add new row Cells to Grid and rects to lattice
+        new_row = []
+        for j, col_w in enumerate(self._col_widths):
+            rect = (
+                m.Rectangle(height=height, width=col_w)
+                .set_opacity(0)
+                .move_to(self.rects[row_index, j], aligned_edge=m.UL)
+            )
+            cell = Cell(self, rect, row_index, j)
+            new_row.append(cell)
+
+        self.cells[row_index] = new_row
+        idx = num_cols * row_index
+        self.lattice.submobjects[idx:idx] = [cell.rect for cell in new_row]
+        self.lattice.remove(*self.lattice[-num_cols:])
+
+        # recompute row indices
+        for i in range(row_index + 1, num_rows):
+            for j in range(num_cols):
+                cell = self.cells[i, j]
+                cell.row_index = i
+                cell.col_index = j
+
+        # visually shift mobs/olds/rects
+        rows_to_shift = slice(row_index + 1, None)
+        grp = m.VGroup(
+            self.mobs[rows_to_shift],
+            self.olds[rows_to_shift],
+            self.rects[rows_to_shift],
+        ).set_z_index(-1)
+        shift_vec = m.DOWN * (height + self._buff[1])
+        # animation = track_animation(
+        animation = TrackedApplyMethod(grp.shift, shift_vec)
+
+        yield animation
+
+        if not animation._played:
+            grp.shift(shift_vec)
+
+    @contextmanager
+    def insert_column(
+        self,
+        col_index: int | str,
+        width: float | None = None,
+        label: str | None = None,
+    ) -> Generator[m.Animation, None, None]:
+        """Insert a new column in the Grid.
+
+        The Grid geometry will not be changed. Extra columns must be pre-allocated by
+        the user. This method acts as a context manager providing an opportunity to
+        change the Grid (e.g. style the new column or change displayed string labels or
+        column numbers...) before the insertion takes place and to animate this
+        insertion.
+        Inside the context manager, the Grid is already in its post-insertion internal
+        state (e.g. the new column is accessible via `grid.mobs[:, col_index]`).
+        When exiting the context manager, the visual aspect of the insertion will take
+        place.
+
+        Parameters
+        ----------
+        col_index
+            The integer index (or its string label) where the new column should be
+            inserted.
+        width
+            The width in munits of the new column. It can be omitted if the Grid has
+            uniform column widths and will default to that uniform width.
+        label
+            The string label to attribute to the newly inserted column. Must be provided
+            if and only if the other columns already have string labels.
+
+        Yields
+        ------
+        The shift animation for the columns below the inserted one. It can be played
+        directly. If not played, an instant shift will happen when exiting the context
+        manager.
+
+        Raises
+        ------
+        GridShapeError
+            If the column width is not passed for a non-uniform Grid.
+        GridLabelError
+            If a `label` for the new column is passed when the Grid does not have labels
+            defined, or if the `label` is not passed when it should be.
+
+        Examples
+        --------
+        >>> # simplest form: no pre-styling, no post-animation (instant shift)
+        >>> with grid.insert_column(3): pass
+
+        >>> # with pre-styling and post-animation
+        >>> with grid.insert_column(3, label="new_col") as anim:
+        >>>     # the grid is already in the post insertion state internally
+        >>>     grid.rects[:, "new_col"].set_stroke(opacity=1)
+        >>>     self.play(anim, run_time=2)
+
+        """
+        if isinstance(col_index, str):
+            col_index = self._col_labels[col_index]
+
+        num_rows = len(self._row_heights)
+        num_cols = len(self._col_widths)
+
+        # update _col_widths
+        if width is None:
+            if not self.has_uniform_cols:
+                raise GridShapeError(
+                    "This Grid does not have uniform column widths. "
+                    "You must provide the width for the inserted column."
+                )
+            else:
+                width = self.lattice[0].width
+
+        self._col_widths.insert(col_index, width)
+        self._col_widths.pop()
+
+        # update _column_labels and LabelMapper
+        if label is None and self._col_labels:
+            raise GridLabelError(
+                "You must provide a string label for the inserted column."
+            )
+
+        if label is not None:
+            if not self._col_labels:
+                raise GridLabelError(
+                    "This Grid does not have labels defined. You cannot define one for "
+                    "the inserted column."
+                )
+            else:
+                labels = list(self._col_labels.keys())
+                labels.insert(col_index, label)
+                labels.pop()
+                self._col_labels = self._prepare_labels(labels, num_cols)
+
+        self._label_mapper = LabelMapper(self._row_labels, self._col_labels)
+
+        # remove last column
+        self.remove(self.mobs[:, -1])
+        self.remove(self.olds[:, -1])
+        self.remove(self.rects[:, -1])
+
+        # shift references
+        self.cells[:, col_index + 1 :] = self.cells[:, col_index:-1]
+
+        # add new column Cells to Grid and rects to lattice
+        new_col = []
+        # loop backwards to avoid index drift
+        for i in range(num_rows - 1, -1, -1):
+            base_idx = i * num_cols
+            rect = (
+                m.Rectangle(height=self._row_heights[i], width=width)
+                .set_opacity(0)
+                .move_to(self.rects[i, col_index], aligned_edge=m.UL)
+            )
+            cell = Cell(self, rect, i, col_index)
+            new_col.append(cell)
+
+            self.lattice.insert(base_idx + col_index, cell.rect)
+            self.lattice.remove(self.lattice[base_idx + num_cols])
+
+        self.cells[:, col_index] = new_col
+
+        # recompute column indices
+        for j in range(col_index + 1, num_cols):
+            for i in range(num_rows):
+                cell = self.cells[i, j]
+                cell.row_index = i
+                cell.col_index = j
+
+        # visually shift mobs/olds/rects
+        idx = slice(col_index + 1, None)
+        grp = m.VGroup(
+            self.mobs[:, idx], self.olds[:, idx], self.rects[:, idx]
+        ).set_z_index(-1)
+        shift_vec = m.RIGHT * (width + self._buff[0])
+        # animation = track_animation(
+        animation = TrackedApplyMethod(grp.shift, shift_vec)
+
+        yield animation
+
+        if not animation._played:
+            grp.shift(shift_vec)

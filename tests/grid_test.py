@@ -1,8 +1,15 @@
+from copy import copy
+
 import manim as m
 import numpy as np
 import pytest
 
-from manim_grid.exceptions import GridFrameError, GridShapeError, GridStencilError
+from manim_grid.exceptions import (
+    GridFrameError,
+    GridLabelError,
+    GridShapeError,
+    GridStencilError,
+)
 from manim_grid.grid import Cell, EmptyMobject, Grid, Tags
 
 
@@ -110,11 +117,6 @@ def test_prepare_label_with_wrong_number_raises():
         Grid._prepare_labels(["one", "two"], 3)
 
 
-def test_row_col_numbers_are_correct(simple_grid: Grid):
-    assert simple_grid._row_numbers == [0, 1]
-    assert simple_grid._col_numbers == [0, 1, 2]
-
-
 def test_labels_convenience_methods():
     g = Grid([1] * 4, [1], col_labels=["only"])
     assert g.row_labels(font_size=12) == []
@@ -131,6 +133,8 @@ def test_numbers_convenience_methods(simple_grid: Grid):
     assert len(colno) == 3
     assert all(isinstance(r, m.Text) for r in rowno)
     assert all(isinstance(c, m.Text) for c in colno)
+    assert [r.text for r in rowno] == ["1", "2"]
+    assert [c.text for c in colno] == ["1", "2", "3"]
     assert all(r.font_size == 14 for r in rowno)
     assert all(c.font_size == 16 for c in colno)
 
@@ -291,6 +295,211 @@ def test_scroll_offset_is_correct(simple_grid: Grid, direction, step, expected):
 
 
 # ----------------------------------------------------------------------
+# Grid - insert_row
+# ----------------------------------------------------------------------
+def test_insert_row_no_row_height_on_non_uniform_grid_raises():
+    g = Grid([1, 0.5], [1] * 3)
+    with (
+        pytest.raises(GridShapeError, match="You must provide the height"),
+        g.insert_row(0),
+    ):
+        ...
+
+
+def test_insert_row_no_row_height_on_uniform_grid_defaults_to_uniform_height(
+    simple_grid: Grid,
+):
+    with simple_grid.insert_row(1):
+        pass
+    assert simple_grid.has_uniform_rows
+    assert simple_grid._row_heights == [1] * 2
+
+
+def test_insert_row_providing_row_height(simple_grid: Grid):
+    with simple_grid.insert_row(1, height=1.2):
+        pass
+    assert not simple_grid.has_uniform_rows
+    assert simple_grid._row_heights == [1, 1.2]
+
+
+def test_insert_row_providing_label_on_grid_with_no_row_labels_raises(
+    simple_grid: Grid,
+):
+    with (
+        pytest.raises(
+            GridLabelError, match="You cannot define one for the inserted row"
+        ),
+        simple_grid.insert_row(1, label="wrong"),
+    ):
+        ...
+
+
+def test_insert_row_not_providing_label_on_grid_with_row_labels_raises():
+    g = Grid([1] * 3, [1], row_labels=["one", "two", "three"])
+    with (
+        pytest.raises(
+            GridLabelError,
+            match="You must provide a string label for the inserted row.",
+        ),
+        g.insert_row(1),
+    ):
+        ...
+
+
+def test_insert_row_with_str_label_and_internal_state_of_mobs():
+    g = Grid([1, 2, 3], [1] * 3, row_labels=["top", "middle", "bottom"])
+    d1, d2, d3 = [m.Dot() for _ in range(3)]
+    g.mobs[:, 0] = [d1, d2, d3]
+    len_cells = len(g.cells)
+    with g.insert_row(
+        "middle", label="Top of middle. No, wait: middle of top", height=1.2
+    ):
+        pass
+    assert not g.has_uniform_rows
+    assert g._row_heights == [1, 1.2, 2]
+    assert g._row_labels == {
+        "top": 0,
+        "Top of middle. No, wait: middle of top": 1,
+        "middle": 2,
+    }
+    assert g.mobs["top", 0] is g.mobs[0, 0] is d1
+    assert isinstance(g.mobs[1, 0], EmptyMobject)
+    assert isinstance(g.mobs["Top of middle. No, wait: middle of top", 0], EmptyMobject)
+    assert g.mobs["middle", 0] is g.mobs[2, 0] is g.mobs[-1, 0] is d2
+    assert d3 not in g.mobs[:].get_family()
+    assert d3 not in g.submobjects
+    assert len(g.cells) == len_cells
+
+
+def test_insert_row_row_numbers_are_correct(simple_grid: Grid):
+    assert [txt.text for txt in simple_grid.row_numbers()] == ["1", "2"]
+
+
+def test_insert_row_row_indices_are_correctly_updated(simple_grid: Grid):
+    assert [cell.row_index for cell in simple_grid.cells[:].flat] == [0, 0, 0, 1, 1, 1]
+    with simple_grid.insert_row(1):
+        ...
+    assert [cell.row_index for cell in simple_grid.cells[:].flat] == [0, 0, 0, 1, 1, 1]
+
+
+def test_insert_row_lattice_correctly_updated(simple_grid: Grid):
+    lattice = copy(simple_grid.lattice.submobjects)
+    with simple_grid.insert_row(0):
+        ...
+    # first row is new
+    assert simple_grid.lattice[0] not in lattice
+    assert simple_grid.lattice[1] not in lattice
+    assert simple_grid.lattice[2] not in lattice
+    # second row is previous first
+    assert simple_grid.lattice[3] is lattice[0]
+    assert simple_grid.lattice[4] is lattice[1]
+    assert simple_grid.lattice[5] is lattice[2]
+    assert len(lattice) == len(simple_grid.lattice) == 6
+
+
+# ----------------------------------------------------------------------
+# Grid - insert_column
+# ----------------------------------------------------------------------
+def test_insert_col_no_col_height_on_non_uniform_grid_raises():
+    g = Grid([1] * 3, [1, 1.5])
+    with (
+        pytest.raises(GridShapeError, match="You must provide the width"),
+        g.insert_column(0),
+    ):
+        ...
+
+
+def test_insert_col_no_col_height_on_uniform_grid_defaults_to_uniform_width(
+    simple_grid: Grid,
+):
+    with simple_grid.insert_column(1):
+        pass
+    assert simple_grid.has_uniform_cols
+    assert simple_grid._col_widths == [1.5] * 3
+
+
+def test_insert_col_providing_col_width(simple_grid: Grid):
+    with simple_grid.insert_column(1, width=1.2):
+        pass
+    assert not simple_grid.has_uniform_cols
+    assert simple_grid._col_widths == [1.5, 1.2, 1.5]
+
+
+def test_insert_col_providing_label_on_grid_with_no_col_labels_raises(
+    simple_grid: Grid,
+):
+    with (
+        pytest.raises(
+            GridLabelError, match="You cannot define one for the inserted column"
+        ),
+        simple_grid.insert_column(1, label="wrong"),
+    ):
+        ...
+
+
+def test_insert_col_not_providing_label_on_grid_with_col_labels_raises():
+    g = Grid([1] * 3, [1] * 3, col_labels=["one", "two", "three"])
+    with (
+        pytest.raises(
+            GridLabelError,
+            match="You must provide a string label for the inserted column.",
+        ),
+        g.insert_column(1),
+    ):
+        ...
+
+
+def test_insert_col_with_str_label_and_internal_state_of_mobs():
+    g = Grid([1, 2, 3], [1, 2, 3], col_labels=["left", "middle", "right"])
+    d1, d2, d3 = [m.Dot(name=str(num + 1)) for num in range(3)]
+    g.mobs[0] = [d1, d2, d3]
+    len_cells = len(g.cells)
+    with g.insert_column("middle", label="Left of middle", width=1.2):
+        pass
+    assert not g.has_uniform_cols
+    assert g._col_widths == [1, 1.2, 2]
+    assert g._col_labels == {
+        "left": 0,
+        "Left of middle": 1,
+        "middle": 2,
+    }
+    assert g.mobs[0, "left"] is g.mobs[0, 0] is d1
+    assert isinstance(g.mobs[0, 1], EmptyMobject)
+    assert isinstance(g.mobs[0, "Left of middle"], EmptyMobject)
+    assert g.mobs[0, "middle"] is g.mobs[0, 2] is g.mobs[0, -1] is d2
+    assert d3 not in g.mobs[:].get_family()
+    assert d3 not in g.submobjects
+    assert len(g.cells) == len_cells
+
+
+def test_insert_col_col_numbers_are_correct(simple_grid: Grid):
+    assert [txt.text for txt in simple_grid.col_numbers()] == ["1", "2", "3"]
+
+
+def test_insert_col_col_indices_are_correctly_updated(simple_grid: Grid):
+    assert [cell.col_index for cell in simple_grid.cells[:].flat] == [0, 1, 2, 0, 1, 2]
+    with simple_grid.insert_column(1):
+        ...
+    assert [cell.col_index for cell in simple_grid.cells[:].flat] == [0, 1, 2, 0, 1, 2]
+
+
+def test_insert_col_lattice_correctly_updated(simple_grid: Grid):
+    lattice = copy(simple_grid.lattice.submobjects)
+    with simple_grid.insert_column(0):
+        ...
+    # first col is new
+    assert simple_grid.lattice[0] not in lattice
+    assert simple_grid.lattice[3] not in lattice
+    # second col is previous first
+    assert simple_grid.lattice[1] is lattice[0]
+    assert simple_grid.lattice[4] is lattice[3]
+    # third col is previous second
+    assert simple_grid.lattice[2] is lattice[1]
+    assert simple_grid.lattice[5] is lattice[4]
+    assert len(lattice) == len(simple_grid.lattice) == 6
+
+
+# ----------------------------------------------------------------------
 # Grid - submobjects
 # ----------------------------------------------------------------------
 def test_new_grid_has_right_submobjects(simple_grid: Grid):
@@ -393,7 +602,6 @@ def test_grid_has_right_submobjects_after_adding_to_back_and_removing_group(
     initial_len = len(simple_grid.submobjects)
     simple_grid.mobs[0] = [r, c, t]
     simple_grid.add_to_back(simple_grid.mobs[0, :-1])
-    print(simple_grid.submobjects)
     assert len(simple_grid.submobjects) == initial_len + 2
     assert r is simple_grid.submobjects[0]
     assert c is simple_grid.submobjects[1]
