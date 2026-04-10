@@ -587,12 +587,12 @@ def test_grid_has_right_submobjects_after_adding_and_removing_group(simple_grid:
     t = m.Triangle()
     initial_len = len(simple_grid.submobjects)
     simple_grid.mobs[0] = [r, c, t]
-    simple_grid.add(simple_grid.mobs[0, :-1])
+    simple_grid.add(*simple_grid.mobs[0, :-1])
     assert len(simple_grid.submobjects) == initial_len + 2
     assert r in simple_grid.submobjects
     assert c in simple_grid.submobjects
     assert t not in simple_grid.submobjects
-    simple_grid.remove(simple_grid.mobs[0, :-1])
+    simple_grid.remove(*simple_grid.mobs[0, :-1])
     assert len(simple_grid.submobjects) == initial_len
     assert c not in simple_grid.submobjects
     assert r not in simple_grid.submobjects
@@ -624,12 +624,12 @@ def test_grid_has_right_submobjects_after_adding_to_back_and_removing_group(
     t = m.Triangle()
     initial_len = len(simple_grid.submobjects)
     simple_grid.mobs[0] = [r, c, t]
-    simple_grid.add_to_back(simple_grid.mobs[0, :-1])
+    simple_grid.add_to_back(*simple_grid.mobs[0, :-1])
     assert len(simple_grid.submobjects) == initial_len + 2
     assert r is simple_grid.submobjects[0]
     assert c is simple_grid.submobjects[1]
     assert t not in simple_grid.submobjects
-    simple_grid.remove(simple_grid.mobs[0, :-1])
+    simple_grid.remove(*simple_grid.mobs[0, :-1])
     assert len(simple_grid.submobjects) == initial_len
     assert c not in simple_grid.submobjects
     assert r not in simple_grid.submobjects

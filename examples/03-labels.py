@@ -8,17 +8,21 @@ from manim_grid import Grid
 class LabelsAndNumbers(Scene):
     def construct(self):
         # Give meaningful names with `row_labels` and `col_labels`
-        grid = Grid([1] * 5, [1] * 4, col_labels=["row\nnumber", "left", "center", "right"])
+        grid = Grid(
+            [1] * 5, [1] * 4, col_labels=["row\nnumber", "left", "center", "right"]
+        )
         self.add(grid)
         grid.lattice.set_stroke(opacity=1)
 
         # Add the labels to the grid as Text mobjects
         grid.mobs[0, :] = grid.col_labels(font_size=16)
         # row_labels was not provided. We can still add row_numbers. start/stop/step are optional.
-        grid.mobs[1:, 0] = grid.row_numbers(start=1, stop=5, step=1, font_size=26, color=BLUE)
+        grid.mobs[1:, 0] = grid.row_numbers(
+            start=1, stop=5, step=1, font_size=26, color=BLUE
+        )
 
         # Labels can be used in-place of numeric indexes for more expressive indexing
         grid.mobs[1, "right"] = Circle(radius=0.2)  # equivalent to grid.mobs[1, 2]
         # Also works for slices and other complex indexes
         grid.rects[:, "left"::2].set_fill(WHITE, opacity=0.2)
-        grid.add(grid.mobs[:])
+        grid.add(*grid.mobs[:])

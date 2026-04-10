@@ -30,7 +30,7 @@ class Masking(Scene):
         for i, mob in enumerate(grid.mobs[:]):
             mob.set_opacity(i / len(grid.mobs[:]))
 
-        grid.add(grid.mobs[:])
+        grid.add(*grid.mobs[:])
         self.add(grid)
 
         # build a boolean mask to select all cells whith a Circle

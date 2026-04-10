@@ -21,7 +21,7 @@ class Scrolling(Scene):
         grid.lattice.set_fill(GREEN, opacity=1)
 
         grid.mobs[:] = [Text(str(n), font_size=12) for n in range(30)]
-        grid.add(grid.mobs[:])
+        grid.add(*grid.mobs[:])
 
         self.play(grid.animate.scroll(DOWN, 3))  # scrolling DOWN: OK
 

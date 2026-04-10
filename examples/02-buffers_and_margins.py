@@ -23,7 +23,7 @@ class BuffersMargins(Scene):
         # The Dot is placed in the upper-left corner of the first cell
         # with a 0.3 margin in both dimensions
         grid1.mobs[0, 0, UL] = Dot()
-        grid1.add(grid1.mobs[:])
+        grid1.add(*grid1.mobs[:])
 
         # They can also be 2-tuples (horizontal, vertical)
         grid2 = Grid(
@@ -38,4 +38,4 @@ class BuffersMargins(Scene):
         # The Dot is placed in the upper-left corner of the first cell
         # with a 0.5 horizontal margin and no vertical margin
         grid2.mobs[0, 0, UL] = Dot()
-        grid2.add(grid2.mobs[:])
+        grid2.add(*grid2.mobs[:])

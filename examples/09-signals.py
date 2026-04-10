@@ -48,7 +48,7 @@ class Signals(Scene):
     @staticmethod
     @mobs_added.connect
     def add_as_sumobjects(grid, index, mobs):
-        grid.add(grid.mobs[index])
+        grid.add(*grid.mobs[index])
 
     def construct(self):
         self.add(self.grid)

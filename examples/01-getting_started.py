@@ -25,7 +25,7 @@ class GettingStarted(Scene):
             Dot(color=GREEN),
             Rectangle(height=0.3, width=0.5),
         ]
-        grid.add(grid.mobs[0])
+        grid.add(*grid.mobs[0])
 
         # Place a square in the top-left cell, centered (default)
         # It replaces the Circle in that cell

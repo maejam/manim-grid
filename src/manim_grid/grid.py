@@ -471,21 +471,12 @@ class Grid(m.Group):
     def add(self, *mobjects: m.Mobject) -> Self:
         """Add mobjects as submobjects.
 
-        This overriden method performs 2 tasks:
-        * it unpacks Groups and VGroups to add their submobjects instead of adding the
-          groups themselves. This allows a more natural Grid workflow: notations like
-          `grid.add(grid.mobs[:])` will add the leaf `mobs`; removing them later does
-          not require to keep a reference to the Group returned by the MobsProxy.
-          This is not recursive: only one level is unpacked.
-        * it makes sure the right order of submobjects is preserved. The stencil should
-          cover the newly added mobjects, the frame should cover the stencil and finally
-          the viewport should be last.
+        This overriden method makes sure the right order of submobjects is preserved.
+        The stencil should cover the newly added mobjects, the frame should cover the
+        stencil and finally the viewport should be last.
+
         """
-        for mob in mobjects:
-            if isinstance(mob, (m.Group, m.VGroup)):
-                super().add(*mob.submobjects)
-            else:
-                super().add(mob)
+        super().add(*mobjects)
 
         if self._stencil is not None:
             super().add(self.stencil)
@@ -493,30 +484,6 @@ class Grid(m.Group):
             super().add(self.frame)
         if hasattr(self, "viewport"):
             super().add(self.viewport)
-        return self
-
-    def add_to_back(self, *mobjects: m.Mobject) -> Self:
-        """Add all passed mobjects to the back of the submobjects.
-
-        Similarly to `add`, unpacks (V)Groups to add individual submobjects.
-        """
-        for mob in mobjects:
-            if isinstance(mob, (m.Group, m.VGroup)):
-                super().add_to_back(*mob.submobjects)
-            else:
-                super().add_to_back(mob)
-        return self
-
-    def remove(self, *mobjects: m.Mobject) -> Self:
-        """Remove submobjects.
-
-        (V)Groups are unpacked to directly remove members submojects.
-        """
-        for mob in mobjects:
-            if isinstance(mob, (m.Group, m.VGroup)):
-                super().remove(*mob.submobjects)
-            else:
-                super().remove(mob)
         return self
 
     @property
