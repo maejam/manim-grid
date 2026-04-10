@@ -3,6 +3,14 @@ from typing import Any
 import manim as m
 
 
+# A sentinel for default parameters where everything else is valid
+class _Unset:
+    pass
+
+
+_UNSET = _Unset()
+
+
 class TrackedApplyMethod(m.ApplyMethod):
     """Subclass of ApplyMethod that tracks playback."""
 

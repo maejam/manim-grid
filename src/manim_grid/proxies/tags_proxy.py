@@ -19,6 +19,7 @@ from typing import (
 import numpy as np
 from blinker import signal
 
+from manim_grid.helpers import _UNSET
 from manim_grid.typing import BulkIndex, ScalarIndex
 
 from .base import MISSING, ReadableProxy
@@ -37,9 +38,6 @@ class _DeletedSentinel:
 
 
 DELETED = _DeletedSentinel()
-
-# A sentinel for default parameters where everything else is valid
-_NODEFAULT = object()
 
 
 class TagsBase(ABC):
@@ -182,7 +180,7 @@ class TagsList(list[Tags], TagsBase):
         for tags in self.iter_tags():
             tags.update(*args, **kwargs)
 
-    def pop(self, key: str, default: Any = _NODEFAULT) -> Any:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+    def pop(self, key: str, default: Any = _UNSET) -> Any:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
         """Pop a key/value pair from all Tags in the TagsList.
 
         If no default is passed and keys are missing, it will raise.
@@ -193,7 +191,7 @@ class TagsList(list[Tags], TagsBase):
         # ensure atomicity: all or nothing
         # first, get values
         for tags in self.iter_tags():
-            if default is not _NODEFAULT:
+            if default is not _UNSET:
                 results.append(tags.get(key, default))
             else:
                 results.append(tags[key])
