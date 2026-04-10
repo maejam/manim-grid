@@ -372,33 +372,57 @@ class Grid(m.Group):
         """
         return [m.Text(label, **kwargs) for label in self._col_labels]
 
-    def row_numbers(self, **kwargs: Any) -> list[m.Text]:
+    def row_numbers(
+        self, start: int = 1, stop: int | None = None, step: int = 1, **kwargs: Any
+    ) -> list[m.Text]:
         """Return the row numbers as a list of Text Mobjects.
 
         This is a convenience method meant to easily add the numbers to the grid.
 
         Parameters
         ----------
+        start
+            An integer number specifying at which number to start.
+        stop
+            An optional integer number specifying at which number to stop.
+            Defaults to the number that would be attributed to the last row starting
+            from `start` with a step `step`.
+        step
+            An integer number specifying the incrementation.
         kwargs
             Keyword arguments passed to the `Text` constructor.
 
         """
         num_rows = len(self._row_heights)
-        return [m.Text(str(num + 1), **kwargs) for num in range(num_rows)]
+        if stop is None:
+            stop = start + num_rows * step
+        return [m.Text(str(num), **kwargs) for num in range(start, stop, step)]
 
-    def col_numbers(self, **kwargs: Any) -> list[m.Text]:
+    def col_numbers(
+        self, start: int = 1, stop: int | None = None, step: int = 1, **kwargs: Any
+    ) -> list[m.Text]:
         """Return the column numbers as a list of Text Mobjects.
 
         This is a convenience method meant to easily add the numbers to the grid.
 
         Parameters
         ----------
+        start
+            An integer number specifying at which number to start.
+        stop
+            An optional integer number specifying at which number to stop.
+            Defaults to the number that would be attributed to the last column starting
+            from `start` with a step `step`.
+        step
+            An integer number specifying the incrementation.
         kwargs
             Keyword arguments passed to the `Text` constructor.
 
         """
         num_cols = len(self._col_widths)
-        return [m.Text(str(num + 1), **kwargs) for num in range(num_cols)]
+        if stop is None:
+            stop = start + num_cols * step
+        return [m.Text(str(num), **kwargs) for num in range(start, stop, step)]
 
     def _prepare_grid(
         self,

@@ -126,17 +126,40 @@ def test_labels_convenience_methods():
     assert lab[0].font_size == 12
 
 
-def test_numbers_convenience_methods(simple_grid: Grid):
-    rowno = simple_grid.row_numbers(font_size=14)
-    colno = simple_grid.col_numbers(font_size=16)
-    assert len(rowno) == 2
-    assert len(colno) == 3
-    assert all(isinstance(r, m.Text) for r in rowno)
-    assert all(isinstance(c, m.Text) for c in colno)
-    assert [r.text for r in rowno] == ["1", "2"]
-    assert [c.text for c in colno] == ["1", "2", "3"]
-    assert all(r.font_size == 14 for r in rowno)
-    assert all(c.font_size == 16 for c in colno)
+@pytest.mark.parametrize(
+    ("start", "stop", "step", "num_rows", "expected"),
+    [
+        (0, 5, 1, 100, [0, 1, 2, 3, 4]),
+        (0, None, 1, 5, [0, 1, 2, 3, 4]),
+        (0, None, 2, 5, [0, 2, 4, 6, 8]),
+        (1, None, -2, 5, [1, -1, -3, -5, -7]),
+        (1, -1, 2, 5, []),
+    ],
+)
+def test_row_numbers_convenience_method(start, stop, step, num_rows, expected):
+    g = Grid([1] * num_rows, [1])
+    res = g.row_numbers(start, stop, step, font_size=14)
+    assert all(isinstance(r, m.Text) for r in res)
+    assert [r.text for r in res] == [str(num) for num in expected]
+    assert all(r.font_size == 14 for r in res)
+
+
+@pytest.mark.parametrize(
+    ("start", "stop", "step", "num_cols", "expected"),
+    [
+        (0, 5, 1, 100, [0, 1, 2, 3, 4]),
+        (0, None, 1, 5, [0, 1, 2, 3, 4]),
+        (0, None, 2, 5, [0, 2, 4, 6, 8]),
+        (1, None, -2, 5, [1, -1, -3, -5, -7]),
+        (1, -1, 2, 5, []),
+    ],
+)
+def test_col_numbers_convenience_method(start, stop, step, num_cols, expected):
+    g = Grid([1], [1] * num_cols)
+    res = g.col_numbers(start, stop, step, font_size=14)
+    assert all(isinstance(r, m.Text) for r in res)
+    assert [r.text for r in res] == [str(num) for num in expected]
+    assert all(r.font_size == 14 for r in res)
 
 
 # ----------------------------------------------------------------------
