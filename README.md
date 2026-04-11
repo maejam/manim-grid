@@ -11,6 +11,8 @@ It is born from an attempt to build a better `Code` Mobject, more flexible and e
 - [Features](#features)  
 - [Installation](#installation)  
 - [Getting Started](#getting-started)  
+  - [Example](#example)
+  - [Tips](#tips)
 - [More Examples](#more-examples)
 - [Internals](#internals)  
   - [Cell](#cell)  
@@ -57,7 +59,9 @@ Requires `Python >= 3.11, < 3.14` and `manim >= 0.19`
 ## Getting Started  
 
 > [!NOTE]
-> It is necessary to be familiar with [NumPy indexing](https://numpy.org/doc/stable/user/basics.indexing.html) to fully benefit from this plugin.
+> It is necessary to be familiar with [NumPy indexing](https://numpy.org/doc/stable/user/basics.indexing.html) to fully benefit from this plugin.  
+
+### Example  
 
 https://github.com/user-attachments/assets/f1364a89-95dc-4109-bbc1-510232f87ecc  
 
@@ -86,7 +90,7 @@ class GettingStarted(Scene):
             Dot(color=GREEN),
             Rectangle(height=0.3, width=0.5),
         ]
-        grid.add(grid.mobs[0])
+        grid.add(*grid.mobs[0])
 
         # Place a square in the top-left cell, centered (default)
         # It replaces the Circle in that cell
@@ -96,6 +100,11 @@ class GettingStarted(Scene):
         # Transform the circle into the square.
         self.play(ReplacementTransform(grid.olds[0, 0], grid.mobs[0, 0]))
 ```  
+
+### Tips  
+
+- The Grid internal state and its submobjects are 2 different things. When attributing mobjects to cells (`grid.mobs[...] = ...`), **they are not added as submobjects** to the Grid, which means they will not be visible and will not be transformed with the Grid. A second step is necessary: `grid.add(grid.mobs[...])`. This design is intentional for greater control over transitions and animations. This second step (adding as submobjects) can be automated with Signals.
+- It is **highly recommended to unpack any Group/VGroup when adding/removing submobjects**. i.e., `grid.add(*grid.mobs[...])` is prefered over `grid.add(grid.mobs[...])`. This is because `grid.mobs[...]` returns a VGroup when multiple mobjects are targeted. Adding it directly would require to keep a reference to that Group instance to remove it later. Unpacking it gives more control over removing individual mobjects later.  
 
 ---  
 
@@ -111,6 +120,7 @@ The following examples can be found in the [examples](examples/) directory. They
 7. [Frame](examples/07-frame.py)
 8. [Alternative Constructors](examples/08-alternative_constructors.py)
 9. [Signals](examples/09-signals.py)
+10. [Inserting rows/columns](examples/10-inserting.py)
 
 ---  
 

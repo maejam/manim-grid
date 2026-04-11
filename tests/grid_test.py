@@ -134,6 +134,7 @@ def test_labels_convenience_methods():
         (0, None, 2, 5, [0, 2, 4, 6, 8]),
         (1, None, -2, 5, [1, -1, -3, -5, -7]),
         (1, -1, 2, 5, []),
+        (0, None, 1, 1, [0]),
     ],
 )
 def test_row_numbers_convenience_method(start, stop, step, num_rows, expected):
@@ -152,6 +153,7 @@ def test_row_numbers_convenience_method(start, stop, step, num_rows, expected):
         (0, None, 2, 5, [0, 2, 4, 6, 8]),
         (1, None, -2, 5, [1, -1, -3, -5, -7]),
         (1, -1, 2, 5, []),
+        (0, None, 1, 1, [0]),
     ],
 )
 def test_col_numbers_convenience_method(start, stop, step, num_cols, expected):
@@ -373,25 +375,26 @@ def test_insert_row_with_str_label_and_internal_state_of_mobs():
     g = Grid([1, 2, 3], [1] * 3, row_labels=["top", "middle", "bottom"])
     d1, d2, d3 = [m.Dot() for _ in range(3)]
     g.mobs[:, 0] = [d1, d2, d3]
-    len_cells = len(g.cells)
+    len_cells = len(g.cells.flat)
     with g.insert_row(
         "middle", label="Top of middle. No, wait: middle of top", height=1.2
     ):
-        pass
-    assert not g.has_uniform_rows
-    assert g._row_heights == [1, 1.2, 2]
-    assert g._row_labels == {
-        "top": 0,
-        "Top of middle. No, wait: middle of top": 1,
-        "middle": 2,
-    }
-    assert g.mobs["top", 0] is g.mobs[0, 0] is d1
-    assert isinstance(g.mobs[1, 0], EmptyMobject)
-    assert isinstance(g.mobs["Top of middle. No, wait: middle of top", 0], EmptyMobject)
-    assert g.mobs["middle", 0] is g.mobs[2, 0] is g.mobs[-1, 0] is d2
-    assert d3 not in g.mobs[:].get_family()
-    assert d3 not in g.submobjects
-    assert len(g.cells) == len_cells
+        assert not g.has_uniform_rows
+        assert g._row_heights == [1, 1.2, 2]
+        assert g._row_labels == {
+            "top": 0,
+            "Top of middle. No, wait: middle of top": 1,
+            "middle": 2,
+        }
+        assert g.mobs["top", 0] is g.mobs[0, 0] is d1
+        assert isinstance(g.mobs[1, 0], EmptyMobject)
+        assert isinstance(
+            g.mobs["Top of middle. No, wait: middle of top", 0], EmptyMobject
+        )
+        assert g.mobs["middle", 0] is g.mobs[2, 0] is g.mobs[-1, 0] is d2
+        assert d3 not in g.mobs[:].get_family()
+        assert d3 not in g.submobjects
+        assert len(g.cells.flat) == len_cells
 
 
 def test_insert_row_row_numbers_are_correct(simple_grid: Grid):
@@ -418,6 +421,25 @@ def test_insert_row_lattice_correctly_updated(simple_grid: Grid):
     assert simple_grid.lattice[4] is lattice[1]
     assert simple_grid.lattice[5] is lattice[2]
     assert len(lattice) == len(simple_grid.lattice) == 6
+
+
+def test_insert_row_rectangles_well_positioned(simple_grid: Grid):
+    for row in simple_grid.cells:
+        for cell in row:
+            assert cell.rect.get_y() == row[0].rect.get_y()
+    for col in simple_grid.cells.T:
+        for cell in col:
+            assert cell.rect.get_x() == col[0].rect.get_x()
+
+    with simple_grid.insert_row(0):
+        pass
+
+    for row in simple_grid.cells:
+        for cell in row:
+            assert cell.rect.get_y() == row[0].rect.get_y()
+    for col in simple_grid.cells.T:
+        for cell in col:
+            assert cell.rect.get_x() == col[0].rect.get_x()
 
 
 # ----------------------------------------------------------------------
@@ -476,23 +498,22 @@ def test_insert_col_with_str_label_and_internal_state_of_mobs():
     g = Grid([1, 2, 3], [1, 2, 3], col_labels=["left", "middle", "right"])
     d1, d2, d3 = [m.Dot(name=str(num + 1)) for num in range(3)]
     g.mobs[0] = [d1, d2, d3]
-    len_cells = len(g.cells)
+    len_cells = len(g.cells.flat)
     with g.insert_column("middle", label="Left of middle", width=1.2):
-        pass
-    assert not g.has_uniform_cols
-    assert g._col_widths == [1, 1.2, 2]
-    assert g._col_labels == {
-        "left": 0,
-        "Left of middle": 1,
-        "middle": 2,
-    }
-    assert g.mobs[0, "left"] is g.mobs[0, 0] is d1
-    assert isinstance(g.mobs[0, 1], EmptyMobject)
-    assert isinstance(g.mobs[0, "Left of middle"], EmptyMobject)
-    assert g.mobs[0, "middle"] is g.mobs[0, 2] is g.mobs[0, -1] is d2
-    assert d3 not in g.mobs[:].get_family()
-    assert d3 not in g.submobjects
-    assert len(g.cells) == len_cells
+        assert not g.has_uniform_cols
+        assert g._col_widths == [1, 1.2, 2]
+        assert g._col_labels == {
+            "left": 0,
+            "Left of middle": 1,
+            "middle": 2,
+        }
+        assert g.mobs[0, "left"] is g.mobs[0, 0] is d1
+        assert isinstance(g.mobs[0, 1], EmptyMobject)
+        assert isinstance(g.mobs[0, "Left of middle"], EmptyMobject)
+        assert g.mobs[0, "middle"] is g.mobs[0, 2] is g.mobs[0, -1] is d2
+        assert d3 not in g.mobs[:].get_family()
+        assert d3 not in g.submobjects
+        assert len(g.cells.flat) == len_cells
 
 
 def test_insert_col_col_numbers_are_correct(simple_grid: Grid):
@@ -520,6 +541,25 @@ def test_insert_col_lattice_correctly_updated(simple_grid: Grid):
     assert simple_grid.lattice[2] is lattice[1]
     assert simple_grid.lattice[5] is lattice[4]
     assert len(lattice) == len(simple_grid.lattice) == 6
+
+
+def test_insert_col_rectangles_well_positioned(simple_grid: Grid):
+    for row in simple_grid.cells:
+        for cell in row:
+            assert cell.rect.get_y() == row[0].rect.get_y()
+    for col in simple_grid.cells.T:
+        for cell in col:
+            assert cell.rect.get_x() == col[0].rect.get_x()
+
+    with simple_grid.insert_column(0):
+        pass
+
+    for row in simple_grid.cells:
+        for cell in row:
+            assert cell.rect.get_y() == row[0].rect.get_y()
+    for col in simple_grid.cells.T:
+        for cell in col:
+            assert cell.rect.get_x() == col[0].rect.get_x()
 
 
 # ----------------------------------------------------------------------

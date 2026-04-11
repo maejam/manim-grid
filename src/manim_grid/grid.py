@@ -7,7 +7,7 @@ import manim as m
 import numpy as np
 from blinker import signal
 from manim.typing import Vector3D, Vector3DLike
-from manim_utils import Stencil
+from manim_utils import LazyAnimation, Stencil, TrackedAnimationMixin
 
 from manim_grid.exceptions import (
     GridError,
@@ -16,7 +16,6 @@ from manim_grid.exceptions import (
     GridShapeError,
     GridStencilError,
 )
-from manim_grid.helpers import TrackedApplyMethod
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
@@ -811,10 +810,10 @@ class Grid(m.Group):
 
         self._label_mapper = LabelMapper(self._row_labels, self._col_labels)
 
-        # remove last row
-        self.remove(self.mobs[-1])
-        self.remove(self.olds[-1])
-        self.remove(self.rects[-1])
+        # remove last row visually
+        self.remove(*self.mobs[-1])
+        self.remove(*self.olds[-1])
+        self.remove(*self.rects[-1])
 
         # shift references
         self.cells[row_index + 1 :, :] = self.cells[row_index:-1, :]
@@ -843,19 +842,33 @@ class Grid(m.Group):
                 cell.col_index = j
 
         # visually shift mobs/olds/rects
+        # NOTE: since the user could add/remove mobjects inside the context manager, we
+        # yield a LazyAnimation. The grp is defined now but built when the animation
+        # is played.
         rows_to_shift = slice(row_index + 1, None)
-        grp = m.VGroup(
-            self.mobs[rows_to_shift],
-            self.olds[rows_to_shift],
-            self.rects[rows_to_shift],
-        ).set_z_index(-1)
+
+        def grp_factory() -> m.VGroup:
+            return m.VGroup(
+                self.mobs[rows_to_shift],
+                self.olds[rows_to_shift],
+                self.rects[rows_to_shift],
+            ).set_z_index(-1)
+
         shift_vec = m.DOWN * (height + self._buff[1])
-        # animation = track_animation(
-        animation = TrackedApplyMethod(grp.shift, shift_vec)
+
+        class TrackedLazyAnimation(TrackedAnimationMixin, LazyAnimation): ...
+
+        def animation_factory(mob: m.Mobject) -> m.Animation:
+            return m.ApplyMethod(mob.shift, shift_vec)
+
+        animation = TrackedLazyAnimation(
+            animation_factory=animation_factory, mobject_factory=grp_factory
+        )
 
         yield animation
 
-        if not animation._played:
+        if animation._status == "not played":
+            grp = grp_factory()
             grp.shift(shift_vec)
 
     @contextmanager
@@ -955,9 +968,9 @@ class Grid(m.Group):
         self._label_mapper = LabelMapper(self._row_labels, self._col_labels)
 
         # remove last column
-        self.remove(self.mobs[:, -1])
-        self.remove(self.olds[:, -1])
-        self.remove(self.rects[:, -1])
+        self.remove(*self.mobs[:, -1])
+        self.remove(*self.olds[:, -1])
+        self.remove(*self.rects[:, -1])
 
         # shift references
         self.cells[:, col_index + 1 :] = self.cells[:, col_index:-1]
@@ -978,7 +991,7 @@ class Grid(m.Group):
             self.lattice.insert(base_idx + col_index, cell.rect)
             self.lattice.remove(self.lattice[base_idx + num_cols])
 
-        self.cells[:, col_index] = new_col
+        self.cells[:, col_index] = list(reversed(new_col))
 
         # recompute column indices
         for j in range(col_index + 1, num_cols):
@@ -988,15 +1001,31 @@ class Grid(m.Group):
                 cell.col_index = j
 
         # visually shift mobs/olds/rects
-        idx = slice(col_index + 1, None)
-        grp = m.VGroup(
-            self.mobs[:, idx], self.olds[:, idx], self.rects[:, idx]
-        ).set_z_index(-1)
+        # NOTE: since the user could add/remove mobjects inside the context manager, we
+        # yield a LazyAnimation. The grp is defined now but built when the animation
+        # is played.
+        cols_to_shift = slice(col_index + 1, None)
+
+        def grp_factory() -> m.VGroup:
+            return m.VGroup(
+                self.mobs[:, cols_to_shift],
+                self.olds[:, cols_to_shift],
+                self.rects[:, cols_to_shift],
+            ).set_z_index(-1)
+
         shift_vec = m.RIGHT * (width + self._buff[0])
-        # animation = track_animation(
-        animation = TrackedApplyMethod(grp.shift, shift_vec)
+
+        class TrackedLazyAnimation(TrackedAnimationMixin, LazyAnimation): ...
+
+        def animation_factory(mob: m.Mobject) -> m.Animation:
+            return m.ApplyMethod(mob.shift, shift_vec)
+
+        animation = TrackedLazyAnimation(
+            animation_factory=animation_factory, mobject_factory=grp_factory
+        )
 
         yield animation
 
-        if not animation._played:
+        if animation._status == "not played":
+            grp = grp_factory()
             grp.shift(shift_vec)
