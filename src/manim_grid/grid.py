@@ -98,6 +98,69 @@ class Cell:
 
 
 class Grid(m.Group):
+    """Provide a rectangular lattice of :class:`Cell` objects.
+
+    The grid is responsible for:
+
+    * creating the underlying ``np.ndarray`` of ``Cell`` instances,
+    * arranging the rectangle placeholders in a Manim ``VGroup``,
+    * adding a ``stencil`` in the form of a :class:`manim_utils.Stencil` object
+      if at least one of ``num_visible_rows`` or ``num_visible_cols`` is specified.
+    * exposing convenient proxy objects (``mobs``, ``olds``, ...) that forward
+      attribute access to the underlying cells.
+
+    Parameters
+    ----------
+    row_heights
+        Sequence of heights (in munits) for each row. The length of this sequence
+        determines the number of rows.
+    col_widths
+        Sequence of widths (in munits) for each column. The length of this sequence
+        determines the number of columns.
+    buff
+        Spacing between cells. Either a scalar (applied to both axes) or a
+        ``(horizontal, vertical)`` tuple.
+    margin
+        Global margin used when inserting a ``Mobject`` (passed to
+        :meth:`Cell.insert_mob`). Accepts the same scalar/tuple convention as
+        ``buff``.
+    row_labels
+        Optional sequence of strings that label the rows.
+    col_labels
+        Optional sequence of strings that label the columns.
+    num_visible_rows
+        The number of rows that should be visible. A :class:`manim_utils.Stencil`
+        will be used to cover the hidden rows. This stencil is accessible through
+        the attribute `grid.stencil`. If none of `num_visible_rows` and
+        `num_visible_cols` is defined, the stencil will not be created.
+    num_visible_cols
+        Similar to `num_visible_rows` for columns.
+    **kwargs
+        Additional keyword arguments forwarded to the base ``Group``.
+
+    Attributes
+    ----------
+    lattice
+        The ``VGroup`` containing the Rectangle objects defining each cell boundary.
+        Useful when acting on all rectangles at once:
+        `grid.lattice.set_fill(WHITE, opacity=1)`
+    rects
+        A proxy giving access to the same Rectangles as a numpy array for greater
+        control. For instance, targeting only the first column:
+        `grid.rects[:, 0].set_fill(WHITE, opacity=1)`
+    mobs
+        A proxy giving access to the ``mob`` attribute of each cell. Supports
+        read and write operations through ``__getitem__`` and ``__setitem__``.
+    olds
+        A proxy giving access to the ``old`` attribute of each cell. Supports
+        read-only operation through ``__getitem__``.
+    tags
+        A proxy giving access to user defined key/value tags. Allows attaching
+        metadata to cells. See :class:`manim_grid.proxies.tags_proxy.TagsProxy` for
+        detailed instructions.
+
+    """
+
     def __init__(
         self,
         row_heights: Sequence[float],
@@ -111,68 +174,6 @@ class Grid(m.Group):
         num_visible_cols: int | None = None,
         **kwargs: Any,
     ) -> None:
-        """Provide a rectangular lattice of :class:`Cell` objects.
-
-        The grid is responsible for:
-
-        * creating the underlying ``np.ndarray`` of ``Cell`` instances,
-        * arranging the rectangle placeholders in a Manim ``VGroup``,
-        * adding a ``stencil`` in the form of a :class:`manim_utils.Stencil` object
-          if at least one of ``num_visible_rows`` or ``num_visible_cols`` is specified.
-        * exposing convenient proxy objects (``mobs``, ``olds``, ...) that forward
-          attribute access to the underlying cells.
-
-        Parameters
-        ----------
-        row_heights
-            Sequence of heights (in munits) for each row. The length of this sequence
-            determines the number of rows.
-        col_widths
-            Sequence of widths (in munits) for each column. The length of this sequence
-            determines the number of columns.
-        buff
-            Spacing between cells. Either a scalar (applied to both axes) or a
-            ``(horizontal, vertical)`` tuple.
-        margin
-            Global margin used when inserting a ``Mobject`` (passed to
-            :meth:`Cell.insert_mob`). Accepts the same scalar/tuple convention as
-            ``buff``.
-        row_labels
-            Optional sequence of strings that label the rows.
-        col_labels
-            Optional sequence of strings that label the columns.
-        num_visible_rows
-            The number of rows that should be visible. A :class:`manim_utils.Stencil`
-            will be used to cover the hidden rows. This stencil is accessible through
-            the attribute `grid.stencil`. If none of `num_visible_rows` and
-            `num_visible_cols` is defined, the stencil will not be created.
-        num_visible_cols
-            Similar to `num_visible_rows` for columns.
-        **kwargs
-            Additional keyword arguments forwarded to the base ``Group``.
-
-        Attributes
-        ----------
-        lattice
-            The ``VGroup`` containing the Rectangle objects defining each cell boundary.
-            Useful when acting on all rectangles at once:
-            `grid.lattice.set_fill(WHITE, opacity=1)`
-        rects
-            A proxy giving access to the same Rectangles as a numpy array for greater
-            control. For instance, targeting only the first column:
-            `grid.rects[:, 0].set_fill(WHITE, opacity=1)`
-        mobs
-            A proxy giving access to the ``mob`` attribute of each cell. Supports
-            read and write operations through ``__getitem__`` and ``__setitem__``.
-        olds
-            A proxy giving access to the ``old`` attribute of each cell. Supports
-            read-only operation through ``__getitem__``.
-        tags
-            A proxy giving access to user defined key/value tags. Allows attaching
-            metadata to cells. See :class:`manim_grid.proxies.tags_proxy.TagsProxy` for
-            detailed instructions.
-
-        """
         self._stencil: Stencil | None = None
         self._frame: m.Difference | None = None
         super().__init__(**kwargs)
