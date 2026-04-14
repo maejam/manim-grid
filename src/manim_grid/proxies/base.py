@@ -78,6 +78,9 @@ class _BaseProxy(Generic[T]):
     def __repr__(self) -> str:
         return f"<{type(self).__name__} of size {self._grid.cells.shape}>"
 
+    def __len__(self) -> int:
+        return len(self._grid.cells)
+
     def __iter__(self) -> Generator[T]:
         for cell in self._grid.cells.flat:
             yield getattr(cell, self._attr)
