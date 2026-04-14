@@ -1,7 +1,7 @@
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, cast
 
 import manim as m
 import numpy as np
@@ -195,11 +195,14 @@ class Grid(m.Group):
         self._num_visible_rows = num_visible_rows or num_rows
         self._num_visible_cols = num_visible_cols or num_cols
 
+        self.rects = RectsProxy(self)
+        self.mobs = MobsProxy(self, margin=self._margin)
+        self.olds = OldsProxy(self)
+        self.tags = TagsProxy(self)
+
         if num_visible_rows is not None or num_visible_cols is not None:
-            self._stencil = self._create_stencil(
-                self._num_visible_rows, self._num_visible_cols
-            )
-            self.viewport = self._stencil.clip.copy()
+            self._stencil = self._create_stencil()
+            self.viewport = self._stencil.clip
             super().add(self._stencil)
         else:
             # some manim methods/classes (e.g. Difference) don't work with VGroup,
@@ -208,11 +211,6 @@ class Grid(m.Group):
                 opacity=0
             )
         super().add(self.viewport)
-
-        self.rects = RectsProxy(self)
-        self.mobs = MobsProxy(self, margin=self._margin)
-        self.olds = OldsProxy(self)
-        self.tags = TagsProxy(self)
 
     @classmethod
     def fullscreen(cls, num_rows: int, num_cols: int, **kwargs: Any) -> "Grid":
@@ -472,8 +470,8 @@ class Grid(m.Group):
         """Add mobjects as submobjects.
 
         This overriden method makes sure the right order of submobjects is preserved.
-        The stencil should cover the newly added mobjects, the frame should cover the
-        stencil and finally the viewport should be last.
+        The stencil should cover the newly added mobjects and the frame should cover the
+        stencil.
 
         """
         super().add(*mobjects)
@@ -482,8 +480,6 @@ class Grid(m.Group):
             super().add(self.stencil)
         if self._frame is not None:
             super().add(self.frame)
-        if hasattr(self, "viewport"):
-            super().add(self.viewport)
         return self
 
     @property
@@ -505,13 +501,27 @@ class Grid(m.Group):
             )
         return self._stencil
 
-    def _create_stencil(self, num_rows: int, num_cols: int) -> Stencil:
+    def _create_stencil(self) -> Stencil:
         """Create the stencil to hide cells that should not be visible."""
-        visible_area = [
-            cell.rect for cell in self.cells[:num_rows, :num_cols].flatten()
-        ]
-        clip = m.SurroundingRectangle(m.VGroup(visible_area), buff=0)
-        return Stencil(clip=clip, wrapped=self.lattice).set_stroke(opacity=0)
+        viewport = self._compute_viewport(m.Rectangle())
+        return Stencil(clip=viewport, wrapped=self.lattice).set_stroke(opacity=0)
+
+    def _compute_viewport(self, viewport: m.Mobject) -> m.VMobject:
+        """(Re)Compute the viewport."""
+        visible_area = self.rects[: self._num_visible_rows, : self._num_visible_cols]
+        viewport.surround(m.VGroup(visible_area), buff=0, stretch=True)
+        return cast(m.VMobject, viewport)
+
+    @contextmanager
+    def update_viewport(self) -> Generator[None, None, None]:
+        """Recompute the viewport to encompass the visible rows/cols while active."""
+        if self._stencil is not None:
+            self.stencil.clip.add_updater(self._compute_viewport, call_updater=True)
+        try:
+            yield
+        finally:
+            if self._stencil is not None:
+                self.stencil.clip.remove_updater(self._compute_viewport)
 
     @property
     def frame(self) -> m.Difference:
@@ -898,7 +908,7 @@ class Grid(m.Group):
 
         finally:
             self.remove(*last_row)
-            if animation._status == "not played":
+            if animation.status == "not played":
                 grp = grp_factory()
                 grp.shift(shift_vec)
             self.lattice.remove(*self.lattice[-num_cols:])
@@ -1087,7 +1097,7 @@ class Grid(m.Group):
 
         finally:
             self.remove(*last_col)
-            if animation._status == "not played":
+            if animation.status == "not played":
                 grp = grp_factory()
                 grp.shift(shift_vec)
             self.lattice.remove(*last_col_rects)

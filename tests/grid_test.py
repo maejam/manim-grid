@@ -646,8 +646,10 @@ def test_grid_has_right_submobjects_after_assigning_mob(
     assert old in simple_grid.submobjects
     assert simple_grid.mobs[0, 0] is c
     assert c not in simple_grid.submobjects
-    assert simple_grid.submobjects[-2] is simple_grid.stencil
-    assert simple_grid.submobjects[-1] is simple_grid.viewport
+
+    simple_grid.add(*simple_grid.mobs[:])
+    assert c in simple_grid.submobjects
+    assert simple_grid.submobjects[-1] is simple_grid.stencil
 
 
 def test_grid_has_right_submobjects_after_assigning_group(
@@ -657,14 +659,19 @@ def test_grid_has_right_submobjects_after_assigning_group(
     c = m.Circle()
     t = m.Triangle()
     simple_grid.mobs[0] = [r, c, t]
+
     assert simple_grid.mobs[0, 0] is r
     assert simple_grid.mobs[0, 1] is c
     assert simple_grid.mobs[0, 2] is t
     assert r not in simple_grid.submobjects
     assert c not in simple_grid.submobjects
     assert t not in simple_grid.submobjects
-    assert simple_grid.submobjects[-2] is simple_grid.stencil
-    assert simple_grid.submobjects[-1] is simple_grid.viewport
+
+    simple_grid.add(*simple_grid.mobs[:])
+    assert r in simple_grid.submobjects
+    assert c in simple_grid.submobjects
+    assert t in simple_grid.submobjects
+    assert simple_grid.submobjects[-1] is simple_grid.stencil
 
 
 def test_grid_has_right_submobjects_after_adding_and_removing_mob(simple_grid: Grid):
@@ -757,8 +764,7 @@ def test_frame_without_stencil():
     assert np.array_equal(g.frame.get_center(), g.get_center())
     g.scale(0.1)
     assert np.array_equal(g.frame.get_center(), g.get_center())
-    assert g.submobjects[-2] is gframe
-    assert g.submobjects[-1] is g.viewport
+    assert g.submobjects[-1] is gframe
     g.frame = None
     assert gframe not in g.submobjects
     assert g.submobjects[-1] is g.viewport
@@ -786,11 +792,9 @@ def test_frame_with_stencil(simple_grid: Grid):
     )
     assert not np.array_equal(simple_grid.frame.get_center(), simple_grid.get_center())
 
-    assert simple_grid.submobjects[-3] is simple_grid.stencil
-    assert simple_grid.submobjects[-2] is simple_grid.frame
-    assert simple_grid.submobjects[-1] is simple_grid.viewport
+    assert simple_grid.submobjects[-2] is simple_grid.stencil
+    assert simple_grid.submobjects[-1] is simple_grid.frame
     gframe = simple_grid.frame
     simple_grid.frame = None
-    assert simple_grid.submobjects[-2] is simple_grid.stencil
-    assert simple_grid.submobjects[-1] is simple_grid.viewport
+    assert simple_grid.submobjects[-1] is simple_grid.stencil
     assert gframe not in simple_grid.submobjects
