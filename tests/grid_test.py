@@ -397,14 +397,12 @@ def test_insert_row_with_str_label_and_internal_state_of_mobs():
         assert len(g.cells.flat) == len_cells
 
 
-def test_insert_row_row_numbers_are_correct(simple_grid: Grid):
-    assert [txt.text for txt in simple_grid.row_numbers()] == ["1", "2"]
-
-
-def test_insert_row_row_indices_are_correctly_updated(simple_grid: Grid):
+def test_insert_row_cells_identity_and_indices_still_correct(simple_grid: Grid):
+    ids = [id(cell) for cell in simple_grid.cells[:].flat]
     assert [cell.row_index for cell in simple_grid.cells[:].flat] == [0, 0, 0, 1, 1, 1]
     with simple_grid.insert_row(1):
         ...
+    assert [id(cell) for cell in simple_grid.cells[:].flat] == ids
     assert [cell.row_index for cell in simple_grid.cells[:].flat] == [0, 0, 0, 1, 1, 1]
 
 
@@ -440,6 +438,37 @@ def test_insert_row_rectangles_well_positioned(simple_grid: Grid):
     for col in simple_grid.cells.T:
         for cell in col:
             assert cell.rect.get_x() == col[0].rect.get_x()
+
+
+def test_insert_row_grid_rects_and_lattice_in_sync(simple_grid: Grid):
+    for rect1, rect2 in zip(simple_grid.rects[:], simple_grid.lattice, strict=True):
+        assert rect1 is rect2
+    with simple_grid.insert_row(1):
+        pass
+    for rect1, rect2 in zip(simple_grid.rects[:], simple_grid.lattice, strict=True):
+        assert rect1 is rect2
+
+
+def test_insert_row_shift_tags_False(simple_grid: Grid):
+    tags = simple_grid.tags[:]
+    with simple_grid.insert_row(1):
+        pass
+    for tags1, tags2 in zip(tags, simple_grid.tags[:], strict=True):
+        assert tags1 is tags2
+
+
+def test_insert_row_shift_tags_True(simple_grid: Grid):
+    tags = simple_grid.tags[:]
+    tags0 = simple_grid.tags[0]
+
+    with simple_grid.insert_row(1, shift_tags=True):
+        pass
+    # row 0 unchanged
+    for t1, t2 in zip(tags0, simple_grid.tags[0], strict=True):
+        assert t1 is t2
+    # row 1 new
+    for t1 in simple_grid.tags[1]:
+        assert not any(t1 is t2 for t2 in tags)
 
 
 # ----------------------------------------------------------------------
@@ -520,10 +549,12 @@ def test_insert_col_col_numbers_are_correct(simple_grid: Grid):
     assert [txt.text for txt in simple_grid.col_numbers()] == ["1", "2", "3"]
 
 
-def test_insert_col_col_indices_are_correctly_updated(simple_grid: Grid):
+def test_insert_col_cells_identity_and_indices_still_correct(simple_grid: Grid):
+    ids = [id(cell) for cell in simple_grid.cells[:].flat]
     assert [cell.col_index for cell in simple_grid.cells[:].flat] == [0, 1, 2, 0, 1, 2]
     with simple_grid.insert_column(1):
         ...
+    assert [id(cell) for cell in simple_grid.cells[:].flat] == ids
     assert [cell.col_index for cell in simple_grid.cells[:].flat] == [0, 1, 2, 0, 1, 2]
 
 
@@ -560,6 +591,37 @@ def test_insert_col_rectangles_well_positioned(simple_grid: Grid):
     for col in simple_grid.cells.T:
         for cell in col:
             assert cell.rect.get_x() == col[0].rect.get_x()
+
+
+def test_insert_col_grid_rects_and_lattice_in_sync(simple_grid: Grid):
+    for rect1, rect2 in zip(simple_grid.rects[:], simple_grid.lattice, strict=True):
+        assert rect1 is rect2
+    with simple_grid.insert_column(1):
+        pass
+    for rect1, rect2 in zip(simple_grid.rects[:], simple_grid.lattice, strict=True):
+        assert rect1 is rect2
+
+
+def test_insert_col_shift_tags_False(simple_grid: Grid):
+    tags = simple_grid.tags[:]
+    with simple_grid.insert_column(1):
+        pass
+    for tags1, tags2 in zip(tags, simple_grid.tags[:], strict=True):
+        assert tags1 is tags2
+
+
+def test_insert_col_shift_tags_True(simple_grid: Grid):
+    tags = simple_grid.tags[:]
+    tags0 = simple_grid.tags[:, 0]
+
+    with simple_grid.insert_column(1, shift_tags=True):
+        pass
+    # col 0 unchanged
+    for t1, t2 in zip(tags0, simple_grid.tags[:, 0], strict=True):
+        assert t1 is t2
+    # col 1 new
+    for t1 in simple_grid.tags[:, 1]:
+        assert not any(t1 is t2 for t2 in tags)
 
 
 # ----------------------------------------------------------------------

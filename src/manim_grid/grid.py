@@ -721,15 +721,21 @@ class Grid(m.Group):
     def insert_row(
         self,
         row_index: int | str,
+        *,
         height: float | None = None,
         label: str | None = None,
-    ) -> Generator[m.Animation, None, None]:
+        shift_tags: bool = False,
+    ) -> Generator[tuple[m.Animation, m.VGroup], None, None]:
         """Insert a new row in the Grid.
 
-        The Grid geometry will not be changed. Extra rows must be pre-allocated by the
-        user. This method acts as a context manager providing an opportunity to change
+        The Grid geometry will not be changed and cells identity is preserved after
+        insertion. The last row mobjects will be removed from `grid.mobs` as well as
+        `grid.submobjects`. To avoid this visually, extra empty rows must be
+        pre-allocated.
+
+        This method acts as a context manager providing an opportunity to change
         the Grid (e.g. style the new row or change displayed string labels or row
-        numbers...) before the insertion takes place and to animate this insertion.
+        numbers...) before the insertion takes place, and to animate this insertion.
         Inside the context manager, the Grid is already in its post-insertion internal
         state (e.g. the new row is accessible via `grid.mobs[row_index]`). When exiting
         the context manager, the visual aspect of the insertion will take place.
@@ -745,12 +751,23 @@ class Grid(m.Group):
         label
             The string label to attribute to the newly inserted row. Must be provided
             if and only if the other rows already have string labels.
+        shift_tags
+            Whether or not the tags should be shifted to the next row cell during
+            insertion. If you consider tags to be part of the content (i.e. they
+            describe the mobs inside each cell) set to `True`, else (i.e. they are
+            attached to the Cells themselves and describe the position), keep the
+            `False` default.
 
         Yields
         ------
-        The shift animation for the rows below the inserted one. It can be played
-        directly. If not played, an instant shift will happen when exiting the context
-        manager.
+        tuple[Animation, VGroup]
+            The first element in the yielded tuple is the shift animation for the rows
+            below the inserted one. It can be played directly. If not played, an instant
+            shift will happen when exiting the context manager.
+            The second element is a VGroup containing the last row mobjects
+            (`mob`, `old` and `rect`). It can be used to animate the last row removal
+            (e.g. FadeOut). These mobjects will be removed from the grid when exiting
+            the context manager.
 
         Raises
         ------
@@ -762,13 +779,14 @@ class Grid(m.Group):
 
         Examples
         --------
-        >>> # simplest form: no pre-styling, no post-animation (instant shift)
+        >>> # simplest form: no pre-styling, no animation (automatic instant shift)
         >>> with grid.insert_row(3): pass
 
-        >>> # with pre-styling and post-animation
-        >>> with grid.insert_row(3, label="new_row") as anim:
+        >>> # with pre-styling and animation
+        >>> with grid.insert_row(3, label="new_row") as (anim, last_row):
         >>>     # the grid is already in the post insertion state internally
         >>>     grid.rects["new_row"].set_stroke(opacity=1)
+        >>>     self.play(FadeOut(last_row))
         >>>     self.play(anim, run_time=2)
 
         """
@@ -800,8 +818,8 @@ class Grid(m.Group):
         if label is not None:
             if not self._row_labels:
                 raise GridLabelError(
-                    "This Grid does not have labels defined. You cannot define one for "
-                    "the inserted row."
+                    "This Grid does not have row labels defined. You cannot define one "
+                    "for the inserted row."
                 )
             else:
                 labels = list(self._row_labels.keys())
@@ -811,36 +829,45 @@ class Grid(m.Group):
 
         self._label_mapper = LabelMapper(self._row_labels, self._col_labels)
 
-        # remove last row visually
-        self.remove(*self.mobs[-1])
-        self.remove(*self.olds[-1])
-        self.remove(*self.rects[-1])
-
         # shift references
-        self.cells[row_index + 1 :, :] = self.cells[row_index:-1, :]
+        # NOTE: self.cells[row_index + 1 :, :] = self.cells[row_index:-1, :]
+        # would breack Cells identity => shift member mobjects instead
 
-        # add new row Cells to Grid and rects to lattice
-        new_row = []
-        for j, col_w in enumerate(self._col_widths):
-            rect = (
-                m.Rectangle(height=height, width=col_w)
-                .set_opacity(0)
-                .move_to(self.rects[row_index, j], aligned_edge=m.UL)
-            )
-            cell = Cell(self, rect, row_index, j)
-            new_row.append(cell)
+        last_row = m.VGroup(
+            *self.mobs[-1], *self.olds[-1], *self.rects[-1]
+        ).set_z_index(self.z_index - 1)
 
-        self.cells[row_index] = new_row
+        attrs_to_shift = ["alignment", "mob", "old", "rect"]
+        if shift_tags:
+            attrs_to_shift.append("tags")
+
+        for row in range(num_rows - 2, row_index - 1, -1):
+            for col in range(num_cols):
+                for attr in attrs_to_shift:
+                    value = getattr(self.cells[row, col], attr)
+                    setattr(self.cells[row + 1, col], attr, value)
+
+        # reset inserted row and update lattice
+        # NOTE: we remove the last row rects from the lattice at the very end to make
+        # sure the stencil covers the last row the whole time
         idx = num_cols * row_index
-        self.lattice.submobjects[idx:idx] = [cell.rect for cell in new_row]
-        self.lattice.remove(*self.lattice[-num_cols:])
+        for col_index, width in enumerate(self._col_widths):
+            cell = self.cells[row_index, col_index]
+            rect = (
+                m.Rectangle(height=height, width=width)
+                .set_opacity(0)
+                .move_to(cell.rect, aligned_edge=m.UL)
+            )
+            cell.rect = rect
+            cell.alignment = m.ORIGIN
+            cell.mob = EmptyMobject()
+            cell.old = EmptyMobject()
+            if shift_tags:
+                cell.tags = Tags(cell=cell)
 
-        # recompute row indices
-        for i in range(row_index + 1, num_rows):
-            for j in range(num_cols):
-                cell = self.cells[i, j]
-                cell.row_index = i
-                cell.col_index = j
+            self.lattice.insert(idx, rect)
+            self.add(rect)
+            idx += 1
 
         # visually shift mobs/olds/rects
         # NOTE: since the user could add/remove mobjects inside the context manager, we
@@ -853,7 +880,7 @@ class Grid(m.Group):
                 self.mobs[rows_to_shift],
                 self.olds[rows_to_shift],
                 self.rects[rows_to_shift],
-            ).set_z_index(-1)
+            ).set_z_index(self.z_index - 1)
 
         shift_vec = m.DOWN * (height + self._buff[1])
 
@@ -866,25 +893,35 @@ class Grid(m.Group):
             animation_factory=animation_factory, mobject_factory=grp_factory
         )
 
-        yield animation
+        try:
+            yield (animation, last_row)
 
-        if animation._status == "not played":
-            grp = grp_factory()
-            grp.shift(shift_vec)
+        finally:
+            self.remove(*last_row)
+            if animation._status == "not played":
+                grp = grp_factory()
+                grp.shift(shift_vec)
+            self.lattice.remove(*self.lattice[-num_cols:])
 
     @contextmanager
     def insert_column(
         self,
         col_index: int | str,
+        *,
         width: float | None = None,
         label: str | None = None,
-    ) -> Generator[m.Animation, None, None]:
+        shift_tags: bool = False,
+    ) -> Generator[tuple[m.Animation, m.VGroup], None, None]:
         """Insert a new column in the Grid.
 
-        The Grid geometry will not be changed. Extra columns must be pre-allocated by
-        the user. This method acts as a context manager providing an opportunity to
+        The Grid geometry will not be changed and cells identity is preserved after
+        insertion. The last column mobjects will be removed from `grid.mobs` as well as
+        `grid.submobjects`. To avoid this visually, extra empty columns must be
+        pre-allocated.
+
+        This method acts as a context manager providing an opportunity to
         change the Grid (e.g. style the new column or change displayed string labels or
-        column numbers...) before the insertion takes place and to animate this
+        column numbers...) before the insertion takes place, and to animate this
         insertion.
         Inside the context manager, the Grid is already in its post-insertion internal
         state (e.g. the new column is accessible via `grid.mobs[:, col_index]`).
@@ -902,12 +939,23 @@ class Grid(m.Group):
         label
             The string label to attribute to the newly inserted column. Must be provided
             if and only if the other columns already have string labels.
+        shift_tags
+            Whether or not the tags should be shifted to the next column cell during
+            insertion. If you consider tags to be part of the content (i.e. they
+            describe the mobs inside each cell) set to `True`, else (i.e. they are
+            attached to the Cells themselves and describe the position), keep the
+            `False` default.
 
         Yields
         ------
-        The shift animation for the columns below the inserted one. It can be played
-        directly. If not played, an instant shift will happen when exiting the context
-        manager.
+        tuple[Animation, VGroup]
+            The first element in the yielded tuple is the shift animation for the
+            columns below the inserted one. It can be played directly. If not played,
+            an instant shift will happen when exiting the context manager.
+            The second element is a VGroup containing the last column mobjects
+            (`mob`, `old` and `rect`). It can be used to animate the last column removal
+            (e.g. FadeOut). These mobjects will be removed from the grid when exiting
+            the context manager.
 
         Raises
         ------
@@ -919,13 +967,14 @@ class Grid(m.Group):
 
         Examples
         --------
-        >>> # simplest form: no pre-styling, no post-animation (instant shift)
+        >>> # simplest form: no pre-styling, no animation (automatic instant shift)
         >>> with grid.insert_column(3): pass
 
-        >>> # with pre-styling and post-animation
-        >>> with grid.insert_column(3, label="new_col") as anim:
+        >>> # with pre-styling and animation
+        >>> with grid.insert_column(3, label="new_col") as (anim, last_col):
         >>>     # the grid is already in the post insertion state internally
         >>>     grid.rects[:, "new_col"].set_stroke(opacity=1)
+        >>>     self.play(FadeOut(last_col))
         >>>     self.play(anim, run_time=2)
 
         """
@@ -957,8 +1006,8 @@ class Grid(m.Group):
         if label is not None:
             if not self._col_labels:
                 raise GridLabelError(
-                    "This Grid does not have labels defined. You cannot define one for "
-                    "the inserted column."
+                    "This Grid does not have column labels defined. You cannot define "
+                    "one for the inserted column."
                 )
             else:
                 labels = list(self._col_labels.keys())
@@ -968,38 +1017,46 @@ class Grid(m.Group):
 
         self._label_mapper = LabelMapper(self._row_labels, self._col_labels)
 
-        # remove last column
-        self.remove(*self.mobs[:, -1])
-        self.remove(*self.olds[:, -1])
-        self.remove(*self.rects[:, -1])
-
         # shift references
-        self.cells[:, col_index + 1 :] = self.cells[:, col_index:-1]
+        # NOTE: self.cells[:, col_index + 1 :] = self.cells[:, col_index:-1]
+        # would breack Cells identity => shift member mobjects instead
 
-        # add new column Cells to Grid and rects to lattice
-        new_col = []
-        # loop backwards to avoid index drift
-        for i in range(num_rows - 1, -1, -1):
-            base_idx = i * num_cols
+        last_col = m.VGroup(
+            *self.mobs[:, -1], *self.olds[:, -1], *self.rects[:, -1]
+        ).set_z_index(self.z_index - 1)
+        last_col_rects = self.rects[:, -1]
+
+        attrs_to_shift = ["alignment", "mob", "old", "rect"]
+        if shift_tags:
+            attrs_to_shift.append("tags")
+
+        for col in range(num_cols - 2, col_index - 1, -1):
+            for row in range(num_rows):
+                for attr in attrs_to_shift:
+                    value = getattr(self.cells[row, col], attr)
+                    setattr(self.cells[row, col + 1], attr, value)
+
+        # reset inserted col and update lattice
+        # NOTE: we remove the last col rects from the lattice at the very end to make
+        # sure the stencil covers the last col the whole time
+        for row_index, height in enumerate(self._row_heights):
+            idx = (row_index * num_cols) + col_index + row_index
+            cell = self.cells[row_index, col_index]
             rect = (
-                m.Rectangle(height=self._row_heights[i], width=width)
+                m.Rectangle(height=height, width=width)
                 .set_opacity(0)
-                .move_to(self.rects[i, col_index], aligned_edge=m.UL)
+                .move_to(cell.rect, aligned_edge=m.UL)
             )
-            cell = Cell(self, rect, i, col_index)
-            new_col.append(cell)
+            cell.rect = rect
+            cell.alignment = m.ORIGIN
+            cell.mob = EmptyMobject()
+            cell.old = EmptyMobject()
+            if shift_tags:
+                cell.tags = Tags(cell=cell)
 
-            self.lattice.insert(base_idx + col_index, cell.rect)
-            self.lattice.remove(self.lattice[base_idx + num_cols])
-
-        self.cells[:, col_index] = list(reversed(new_col))
-
-        # recompute column indices
-        for j in range(col_index + 1, num_cols):
-            for i in range(num_rows):
-                cell = self.cells[i, j]
-                cell.row_index = i
-                cell.col_index = j
+            self.lattice.insert(idx, rect)
+            self.add(rect)
+            idx += 1
 
         # visually shift mobs/olds/rects
         # NOTE: since the user could add/remove mobjects inside the context manager, we
@@ -1012,7 +1069,7 @@ class Grid(m.Group):
                 self.mobs[:, cols_to_shift],
                 self.olds[:, cols_to_shift],
                 self.rects[:, cols_to_shift],
-            ).set_z_index(-1)
+            ).set_z_index(self.z_index - 1)
 
         shift_vec = m.RIGHT * (width + self._buff[0])
 
@@ -1025,8 +1082,12 @@ class Grid(m.Group):
             animation_factory=animation_factory, mobject_factory=grp_factory
         )
 
-        yield animation
+        try:
+            yield (animation, last_col)
 
-        if animation._status == "not played":
-            grp = grp_factory()
-            grp.shift(shift_vec)
+        finally:
+            self.remove(*last_col)
+            if animation._status == "not played":
+                grp = grp_factory()
+                grp.shift(shift_vec)
+            self.lattice.remove(*last_col_rects)
