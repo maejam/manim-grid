@@ -641,8 +641,7 @@ def test_new_grid_has_right_submobjects(simple_grid: Grid):
     assert simple_grid.rects[0, 0] in simple_grid.submobjects
     assert simple_grid.olds[0, 0] in simple_grid.submobjects
     assert simple_grid.mobs[0, 0] in simple_grid.submobjects
-    assert simple_grid.submobjects[-2] is simple_grid.stencil
-    assert simple_grid.submobjects[-1] is simple_grid.viewport
+    assert simple_grid.submobjects[-1] is simple_grid.stencil
 
 
 def test_grid_has_right_submobjects_after_assigning_mob(

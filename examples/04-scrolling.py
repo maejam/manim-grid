@@ -19,6 +19,7 @@ class Scrolling(Scene):
         )
         self.add(grid.to_corner(UL))
         grid.lattice.set_fill(GREEN, opacity=1)
+        grid.viewport.set_stroke(opacity=1)
 
         grid.mobs[:] = [Text(str(n), font_size=12) for n in range(30)]
         grid.add(*grid.mobs[:])
@@ -36,5 +37,5 @@ class Scrolling(Scene):
         self.play(grid.animate.free_scroll(RIGHT, 1.7))
 
         # Scrolling past the last row/column gives weird artifacts
-        # Add empty lines to avoid them
+        # Add empty rows/cols to avoid them
         self.play(grid.animate.scroll(DOWN, 5))

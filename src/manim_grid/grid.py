@@ -212,7 +212,7 @@ class Grid(m.Group):
             self.viewport = m.SurroundingRectangle(self.lattice, buff=0).set_stroke(
                 opacity=0
             )
-        super().add(self.viewport)
+            super().add(self.viewport)
 
     @classmethod
     def fullscreen(cls, num_rows: int, num_cols: int, **kwargs: Any) -> "Grid":
@@ -633,13 +633,13 @@ class Grid(m.Group):
         """Keep the viewport in place while this context manager is active.
 
         The "viewport" here is meant in a visual sense. It is not only composed by the
-        `grid.viewport` Rectangle, but also the `Grid.frame` Difference and the
-        `Grid.stencil.clip` Rectangle. All these submojects usually stay in sync with
-        the grid (e.g. when we shift the grid, we usually want the visual viewport to be
-        shifted as well). However, we sometimes need to transform the Grid without
-        transforming the visual viewport with it (e.g. when scrolling). This context
-        manager simply removes the listed submobjects from the grid while entering and
-        adds them back when exiting.
+        `grid.viewport` Rectangle, but also the `Grid.frame` Difference.
+        These submojects usually stay in sync with the grid (e.g. when we shift the
+        grid, we usually want the visual viewport to be shifted as well). However, we
+        sometimes need to transform the Grid without transforming the visual viewport
+        with it (e.g. when scrolling). This context manager simply removes the frame
+        from the grid submobjects and set the viewport (the stencil clip) to be static
+        while entering and restores everything when exiting.
 
         Raises
         ------
@@ -654,12 +654,16 @@ class Grid(m.Group):
         self.stencil.is_clip_static = True
         if self._frame is not None:
             self.remove(self.frame)
-        self.remove(self.viewport)
-        yield
-        self.stencil.is_clip_static = False
-        if self._frame is not None:
-            self.add(self.frame)
-        self.add(self.viewport)
+        if self._stencil is None:
+            self.remove(self.viewport)
+        try:
+            yield
+        finally:
+            self.stencil.is_clip_static = False
+            if self._frame is not None:
+                self.add(self.frame)
+            if self._stencil is None:
+                self.add(self.viewport)
 
     @property
     def has_uniform_rows(self) -> bool:
@@ -720,7 +724,7 @@ class Grid(m.Group):
             )
 
         offset = self._compute_scroll_offset(direction, step)
-        # stencil.clip and grid.frame should not be shifted
+        # viewport and grid.frame should not be shifted
         with self.keep_viewport_static():
             self.shift(offset)
 
