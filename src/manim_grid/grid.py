@@ -8,7 +8,7 @@ import manim as m
 import numpy as np
 from blinker import signal
 from manim.typing import Vector3D, Vector3DLike
-from manim_utils import LazyAnimation, Stencil, TrackedAnimationMixin
+from manim_utils import Stencil
 
 from manim_grid.exceptions import (
     GridError,
@@ -17,6 +17,7 @@ from manim_grid.exceptions import (
     GridShapeError,
     GridStencilError,
 )
+from manim_grid.helpers import TrackedLazyAnimation
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
@@ -792,7 +793,7 @@ class Grid(m.Group):
         height: float | None = None,
         label: str | None = None,
         shift_tags: bool = False,
-    ) -> Generator[tuple[m.Animation, m.VDict, m.ValueTracker], None, None]:
+    ) -> Generator[tuple[TrackedLazyAnimation, m.VDict, m.ValueTracker], None, None]:
         """Insert a new row in the Grid.
 
         The Grid geometry will not be changed and cells identity is preserved after
@@ -957,8 +958,6 @@ class Grid(m.Group):
 
         shift_vec = m.DOWN * (height + self._buff[1])
 
-        class TrackedLazyAnimation(TrackedAnimationMixin, LazyAnimation): ...
-
         def animation_factory(mob: m.Mobject) -> m.Animation:
             return m.ApplyMethod(mob.shift, shift_vec)
 
@@ -988,7 +987,7 @@ class Grid(m.Group):
         width: float | None = None,
         label: str | None = None,
         shift_tags: bool = False,
-    ) -> Generator[tuple[m.Animation, m.VDict, m.ValueTracker], None, None]:
+    ) -> Generator[tuple[TrackedLazyAnimation, m.VDict, m.ValueTracker], None, None]:
         """Insert a new column in the Grid.
 
         The Grid geometry will not be changed and cells identity is preserved after
@@ -1155,8 +1154,6 @@ class Grid(m.Group):
             ).set_z_index(self.z_index - 1)
 
         shift_vec = m.RIGHT * (width + self._buff[0])
-
-        class TrackedLazyAnimation(TrackedAnimationMixin, LazyAnimation): ...
 
         def animation_factory(mob: m.Mobject) -> m.Animation:
             return m.ApplyMethod(mob.shift, shift_vec)
