@@ -356,7 +356,15 @@ class Grid(m.Group):
         kwargs
             Keyword arguments passed to the `Text` constructor.
 
+        Raises
+        ------
+        GridLableError
+            If the Grid does not have row labels.
+
         """
+        if not self._row_labels:
+            raise GridLabelError("This Grid does not have row labels defined.")
+
         return [m.Text(label, **kwargs) for label in self._row_labels]
 
     def col_labels(self, **kwargs: Any) -> list[m.Text]:
@@ -369,7 +377,15 @@ class Grid(m.Group):
         kwargs
             Keyword arguments passed to the `Text` constructor.
 
+        Raises
+        ------
+        GridLableError
+            If the Grid does not have column labels.
+
         """
+        if not self._col_labels:
+            raise GridLabelError("This Grid does not have column labels defined.")
+
         return [m.Text(label, **kwargs) for label in self._col_labels]
 
     def row_numbers(

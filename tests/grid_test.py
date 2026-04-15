@@ -117,9 +117,19 @@ def test_prepare_label_with_wrong_number_raises():
         Grid._prepare_labels(["one", "two"], 3)
 
 
+def test_labels_convenience_methods_raise_when_no_labels(simple_grid: Grid):
+    with pytest.raises(
+        GridLabelError, match=r"This Grid does not have (?:row|column) labels defined."
+    ):
+        simple_grid.row_labels()
+    with pytest.raises(
+        GridLabelError, match=r"This Grid does not have (?:row|column) labels defined."
+    ):
+        simple_grid.col_labels()
+
+
 def test_labels_convenience_methods():
     g = Grid([1] * 4, [1], col_labels=["only"])
-    assert g.row_labels(font_size=12) == []
     lab = g.col_labels(font_size=12)
     assert len(lab) == 1
     assert isinstance(lab[0], m.Text)
