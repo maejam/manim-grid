@@ -967,9 +967,9 @@ class Grid(m.Group):
 
         def grp_factory() -> m.VGroup:
             return m.VGroup(
-                self.mobs[rows_to_shift],
-                self.olds[rows_to_shift],
-                self.rects[rows_to_shift],
+                *self.mobs[rows_to_shift],
+                *self.olds[rows_to_shift],
+                *self.rects[rows_to_shift],
             ).set_z_index(self.z_index - 1)
 
         shift_vec = m.DOWN * (height + self._buff[1])
@@ -986,6 +986,18 @@ class Grid(m.Group):
         )
 
         try:
+            signal("row_insertion_processed").send(
+                self,
+                row_index=row_index,
+                height=height,
+                label=label,
+                animation=animation,
+                tracker=alpha_tracker,
+                shift_group_factory=grp_factory,
+                shift_vec=shift_vec,
+                last_row=last_row,
+            )
+
             yield (animation, last_row, alpha_tracker)
 
         finally:
@@ -994,6 +1006,18 @@ class Grid(m.Group):
                 grp = grp_factory()
                 grp.shift(shift_vec)
             self.lattice.remove(*self.lattice[-num_cols:])
+
+            signal("row_insertion_displayed").send(
+                self,
+                row_index=row_index,
+                height=height,
+                label=label,
+                animation=animation,
+                tracker=alpha_tracker,
+                shift_group=grp_factory(),
+                shift_vec=shift_vec,
+                last_row=last_row,
+            )
 
     @contextmanager
     def insert_column(
@@ -1164,9 +1188,9 @@ class Grid(m.Group):
 
         def grp_factory() -> m.VGroup:
             return m.VGroup(
-                self.mobs[:, cols_to_shift],
-                self.olds[:, cols_to_shift],
-                self.rects[:, cols_to_shift],
+                *self.mobs[:, cols_to_shift],
+                *self.olds[:, cols_to_shift],
+                *self.rects[:, cols_to_shift],
             ).set_z_index(self.z_index - 1)
 
         shift_vec = m.RIGHT * (width + self._buff[0])
@@ -1183,6 +1207,18 @@ class Grid(m.Group):
         )
 
         try:
+            signal("column_insertion_processed").send(
+                self,
+                col_index=col_index,
+                width=width,
+                label=label,
+                animation=animation,
+                tracker=alpha_tracker,
+                shift_group_factory=grp_factory,
+                shift_vec=shift_vec,
+                last_col=last_col,
+            )
+
             yield (animation, last_col, alpha_tracker)
 
         finally:
@@ -1191,3 +1227,15 @@ class Grid(m.Group):
                 grp = grp_factory()
                 grp.shift(shift_vec)
             self.lattice.remove(*last_col_rects)
+
+            signal("column_insertion_displayed").send(
+                self,
+                col_index=col_index,
+                width=width,
+                label=label,
+                animation=animation,
+                tracker=alpha_tracker,
+                shift_group=grp_factory(),
+                shift_vec=shift_vec,
+                last_col=last_col,
+            )

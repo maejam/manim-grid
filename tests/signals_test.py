@@ -1,4 +1,5 @@
 import manim as m
+import numpy as np
 import pytest
 
 from manim_grid.grid import Cell, EmptyMobject
@@ -251,3 +252,77 @@ def test_tag_changed_bulk_setdefault(simple_grid, signal_monitor):
         assert event.value == 0
         assert simple_grid.tags[0, 0] == {"one": 1, "two": 2}
         assert simple_grid.tags[0, 1] == {"one": 0}
+
+
+# ----------------------------------------------------------------------
+# row_insertion
+# ----------------------------------------------------------------------
+def test_row_insertion(simple_grid, signal_monitor):
+    with (
+        signal_monitor("row_insertion_processed") as monitor1,
+        signal_monitor("row_insertion_displayed") as monitor2,
+    ):
+        with simple_grid.insert_row(0, height=2) as (anim, last_row, tracker):
+            pass
+        monitor1.assert_received(1)
+        monitor2.assert_received(1)
+        assert len(monitor1) == len(monitor2) == 1
+        event1 = next(monitor1)
+        event2 = next(monitor2)
+        assert event1.sender is event2.sender is simple_grid
+        assert event1.row_index == event2.row_index == 0
+        assert event1.height == event2.height == 2
+        assert event1.label is event2.label is None
+        assert event1.animation is event2.animation is anim
+        assert event1.tracker is event2.tracker is anim.alpha_tracker is tracker
+        zipped = zip(
+            event1.shift_group_factory(),
+            event2.shift_group,
+            anim._mobject_factory(),
+            strict=True,
+        )
+        for mob1, mob2, mob3 in zipped:
+            assert mob1 is mob2 is mob3
+        assert all(type(z) is m.VGroup for z in zipped)
+        assert np.array_equal(event1.shift_vec, event2.shift_vec)
+        zipped = zip(event1.last_row, event2.last_row, last_row, strict=True)
+        for grp1, grp2, grp3 in zipped:
+            for mob1, mob2, mob3 in zip(grp1, grp2, grp3, strict=True):
+                assert mob1 is mob2 is mob3
+
+
+# ----------------------------------------------------------------------
+# column_insertion
+# ----------------------------------------------------------------------
+def test_col_insertion(simple_grid, signal_monitor):
+    with (
+        signal_monitor("column_insertion_processed") as monitor1,
+        signal_monitor("column_insertion_displayed") as monitor2,
+    ):
+        with simple_grid.insert_column(0, width=2) as (anim, last_col, tracker):
+            pass
+        monitor1.assert_received(1)
+        monitor2.assert_received(1)
+        assert len(monitor1) == len(monitor2) == 1
+        event1 = next(monitor1)
+        event2 = next(monitor2)
+        assert event1.sender is event2.sender is simple_grid
+        assert event1.col_index == event2.col_index == 0
+        assert event1.width == event2.width == 2
+        assert event1.label is event2.label is None
+        assert event1.animation is event2.animation is anim
+        assert event1.tracker is event2.tracker is anim.alpha_tracker is tracker
+        zipped = zip(
+            event1.shift_group_factory(),
+            event2.shift_group,
+            anim._mobject_factory(),
+            strict=True,
+        )
+        for mob1, mob2, mob3 in zipped:
+            assert mob1 is mob2 is mob3
+        assert all(type(z) is m.VGroup for z in zipped)
+        assert np.array_equal(event1.shift_vec, event2.shift_vec)
+        zipped = zip(event1.last_col, event2.last_col, last_col, strict=True)
+        for grp1, grp2, grp3 in zipped:
+            for mob1, mob2, mob3 in zip(grp1, grp2, grp3, strict=True):
+                assert mob1 is mob2 is mob3

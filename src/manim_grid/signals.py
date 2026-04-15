@@ -113,5 +113,258 @@ tag_changed = signal(
     >>>             grid.add(txt)
     >>>         else:
     >>>             grid.remove(grid.mobs[cell.row_index, cell.col_index])
+
+    """,
+)
+
+row_insertion_processed = signal(
+    "row_insertion_processed",
+    doc="""Emitted when the internal state of the Grid is updated with the new row.
+
+    The visual shift did not happen yet, but the new row is already added to the
+    Grid logical state, and the last one is removed from it.
+
+    Data
+    ----
+    sender
+        The Grid instance.
+    row_index
+        The index of the inserted row.
+    height
+        The height of the inserted row.
+    label
+        The string label given to the inserted row. None if not given.
+    animation
+        The shift animation for the rows after the inserted one.
+    tracker
+        The ValueTracker tracking the advancement of the animation.
+    shift_group_factory
+        A function that when called will return a VGroup containing the mobjects to
+        shift. Includes the `mobs`/`olds` and `rects` for the rows to shift.
+    shift_vec
+        The vector by which to shift the shift_group.
+    last_row
+        The mobjects (`mobs`/`olds` and `rects`) for the last row that are not accesible
+        through the proxies anymore.
+
+    Return Value
+    ------------
+    None
+
+    Examples
+    --------
+    >>> # interpolate the grid color as the animation progresses
+    >>> @row_insertion_processed.connect
+    >>> def interpolate_grid_color(
+    >>>     grid,
+    >>>     row_index,
+    >>>     height,
+    >>>     label,
+    >>>     animation,
+    >>>     tracker,
+    >>>     shift_group,
+    >>>     shift_vec,
+    >>>     last_row,
+    >>> ):
+    >>>     def update_grid_color(mobs: VMobject, alpha):
+    >>>         color = interpolate_color(RED, GREEN, tracker.get_value())
+    >>>         mobs.set_stroke(color)
+
+    >>>     self.play(
+    >>>         animation,
+    >>>         UpdateFromAlphaFunc(
+    >>>             VGroup(grid.rects[:], last_row["rects"]), update_grid_color
+    >>>         ),
+    >>>         run_time=3,
+    >>>     ),
+
+    See Also
+    --------
+    row_insertion_displayed
+    column_insertion_processed
+    column_insertion_displayed
+
+    """,
+)
+
+row_insertion_displayed = signal(
+    "row_insertion_displayed",
+    doc="""Emitted when the row insertion is complete, including the visual shift.
+
+    Data
+    ----
+    sender
+        The Grid instance.
+    row_index
+        The index of the inserted row.
+    height
+        The height of the inserted row.
+    label
+        The string label given to the inserted row. None if not given.
+    animation
+        The shift animation for the rows after the inserted one.
+    tracker
+        The ValueTracker tracking the advancement of the animation.
+    shift_group
+        The group containing the mobjects to shift. Includes the `mobs`/`olds`
+        and `rects` for the rows to shift.
+    shift_vec
+        The vector by which to shift the shift_group.
+    last_row
+        The mobjects (`mobs`/`olds` and `rects`) for the last row that are not accesible
+        through the proxies anymore.
+
+    Return Value
+    ------------
+    None
+
+    Examples
+    --------
+    >>> # play the animation backwards after it has finished
+    >>> @row_insertion_displayed.connect
+    >>> def revert_shift_animation(
+    >>>     grid,
+    >>>     row_index,
+    >>>     height,
+    >>>     label,
+    >>>     animation,
+    >>>     tracker,
+    >>>     shift_group,
+    >>>     shift_vec,
+    >>>     last_row,
+    >>> ):
+    >>>     reverse_anim = ApplyMethod(shift_group.shift, -shift_vec)
+    >>>     self.play(
+    >>>         reverse_anim,
+    >>>     )
+
+    See Also
+    --------
+    row_insertion_processed
+    column_insertion_processed
+    column_insertion_displayed
+
+    """,
+)
+
+column_insertion_processed = signal(
+    "column_insertion_processed",
+    doc="""Emitted when the internal state of the Grid is updated with the new column.
+
+    The visual shift did not happen yet, but the new column is already added to the
+    Grid logical state, and the last one is removed from it.
+
+    Data
+    ----
+    sender
+        The Grid instance.
+    col_index
+        The index of the inserted column.
+    width
+        The width of the inserted column.
+    label
+        The string label given to the inserted column. None if not given.
+    animation
+        The shift animation for the columns after the inserted one.
+    tracker
+        The ValueTracker tracking the advancement of the animation.
+    shift_group_factory
+        A function that when called will return a VGroup containing the mobjects to
+        shift. Includes the `mobs`/`olds` and `rects` for the rows to shift.
+    shift_vec
+        The vector by which to shift the shift group.
+    last_row
+        The mobjects (`mobs`/`olds` and `rects`) for the last row that are not accesible
+        through the proxies anymore.
+
+    Return Value
+    ------------
+    None
+
+    Examples
+    --------
+    >>> # cancel the visual shift
+    >>> # the animations from multiple insertions could then be pooled and played later
+    >>> @column_insertion_processed.connect
+    >>> def cancel_shift(
+    >>>     grid,
+    >>>     col_index,
+    >>>     width,
+    >>>     label,
+    >>>     animation,
+    >>>     tracker,
+    >>>     shift_group,
+    >>>     shift_vec,
+    >>>     last_row,
+    >>> ):
+    >>>     # The shift will happen automatically if and only if
+    >>>     # its `status` attribute is "not palyed".
+    >>>     animation.status = "played"
+
+    See Also
+    --------
+    row_insertion_processed
+    row_insertion_displayed
+    column_insertion_displayed
+
+    """,
+)
+
+column_insertion_displayed = signal(
+    "column_insertion_displayed",
+    doc="""Emitted when the column insertion is complete, including the visual shift.
+
+    Data
+    ----
+    sender
+        The Grid instance.
+    col_index
+        The index of the inserted column.
+    width
+        The width of the inserted column.
+    label
+        The string label given to the inserted column. None if not given.
+    animation
+        The shift animation for the columns after the inserted one.
+    tracker
+        The ValueTracker tracking the advancement of the animation.
+    shift_group
+        The group containing the mobjects to shift. Includes the `mobs`/`olds`
+        and `rects` for the columns to shift.
+    shift_vec
+        The vector by which to shift the shift group.
+    last_row
+        The mobjects (`mobs`/`olds` and `rects`) for the last row that are not accesible
+        through the proxies anymore.
+
+    Return Value
+    ------------
+    None
+
+    Examples
+    --------
+    >>> # add the label to the new column
+    >>> @column_insertion_displayed.connect
+    >>> def add_label(
+    >>>     self,
+    >>>     grid,
+    >>>     col_index,
+    >>>     width,
+    >>>     label,
+    >>>     animation,
+    >>>     tracker,
+    >>>     shift_group,
+    >>>     shift_vec,
+    >>>     last_col,
+    >>> ):
+    >>>     grid.mobs[0, col_index] = Text(label)
+    >>>     grid.add(grid.mobs[0, col_index])
+
+    See Also
+    --------
+    row_insertion_processed
+    row_insertion_displayed
+    column_insertion_processed
+
     """,
 )

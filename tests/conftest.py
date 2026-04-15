@@ -135,8 +135,6 @@ def signal_monitor():
 
     @contextmanager
     def monitor(signame: str, weak=False):
-        disconnect_all()
-
         received = []
         others = []
 
