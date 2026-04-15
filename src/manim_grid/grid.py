@@ -1,4 +1,4 @@
-from collections.abc import Callable, Generator, Sequence
+from collections.abc import Callable, Generator, Hashable, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from functools import partial
@@ -792,7 +792,7 @@ class Grid(m.Group):
         height: float | None = None,
         label: str | None = None,
         shift_tags: bool = False,
-    ) -> Generator[tuple[m.Animation, m.VGroup, m.ValueTracker], None, None]:
+    ) -> Generator[tuple[m.Animation, m.VDict, m.ValueTracker], None, None]:
         """Insert a new row in the Grid.
 
         The Grid geometry will not be changed and cells identity is preserved after
@@ -827,14 +827,14 @@ class Grid(m.Group):
 
         Yields
         ------
-        tuple[Animation, VGroup, ValueTracker]
+        tuple[Animation, VDict, ValueTracker]
             The first element in the yielded tuple is the shift animation for the rows
             below the inserted one. It can be played directly. If not played, an instant
             shift will happen when exiting the context manager.
-            The second element is a VGroup containing the last row mobjects
-            (`mob`, `old` and `rect`). It can be used to animate the last row removal
-            (e.g. FadeOut). These mobjects will be removed from the grid when exiting
-            the context manager.
+            The second element is a VDict containing the last row mobjects
+            (keys: `mobs`, `olds` and `rects`). It can be used to animate the last row
+            removal (e.g. FadeOut) or style it. These mobjects will be removed from the
+            grid when exiting the context manager.
             The third element is a ValueTracker tracking the advancement of the shift
             animation. Can be useful in conjunction with :meth:`update_viewport` for
             instance to precisely time the start of the viewport animation.
@@ -903,9 +903,12 @@ class Grid(m.Group):
         # NOTE: self.cells[row_index + 1 :, :] = self.cells[row_index:-1, :]
         # would breack Cells identity => shift member mobjects instead
 
-        last_row = m.VGroup(
-            *self.mobs[-1], *self.olds[-1], *self.rects[-1]
-        ).set_z_index(self.z_index - 1)
+        d: Mapping[Hashable, m.VMobject] = {
+            "mobs": self.mobs[-1],
+            "olds": self.olds[-1],
+            "rects": self.rects[-1],
+        }
+        last_row = m.VDict(d).set_z_index(self.z_index - 1)
 
         attrs_to_shift = ["alignment", "mob", "old", "rect"]
         if shift_tags:
@@ -985,7 +988,7 @@ class Grid(m.Group):
         width: float | None = None,
         label: str | None = None,
         shift_tags: bool = False,
-    ) -> Generator[tuple[m.Animation, m.VGroup, m.ValueTracker], None, None]:
+    ) -> Generator[tuple[m.Animation, m.VDict, m.ValueTracker], None, None]:
         """Insert a new column in the Grid.
 
         The Grid geometry will not be changed and cells identity is preserved after
@@ -1022,14 +1025,14 @@ class Grid(m.Group):
 
         Yields
         ------
-        tuple[Animation, VGroup, ValueTracker]
+        tuple[Animation, VDict, ValueTracker]
             The first element in the yielded tuple is the shift animation for the
             columns below the inserted one. It can be played directly. If not played,
             an instant shift will happen when exiting the context manager.
-            The second element is a VGroup containing the last column mobjects
-            (`mob`, `old` and `rect`). It can be used to animate the last column removal
-            (e.g. FadeOut). These mobjects will be removed from the grid when exiting
-            the context manager.
+            The second element is a VDict containing the last column mobjects
+            (keys: `mobs`, `olds` and `rects`). It can be used to animate the last col
+            removal (e.g. FadeOut) or style it. These mobjects will be removed from the
+            grid when exiting the context manager.
             The third element is a ValueTracker tracking the advancement of the shift
             animation. Can be useful in conjunction with :meth:`update_viewport` for
             instance to precisely time the start of the viewport animation.
@@ -1098,9 +1101,12 @@ class Grid(m.Group):
         # NOTE: self.cells[:, col_index + 1 :] = self.cells[:, col_index:-1]
         # would breack Cells identity => shift member mobjects instead
 
-        last_col = m.VGroup(
-            *self.mobs[:, -1], *self.olds[:, -1], *self.rects[:, -1]
-        ).set_z_index(self.z_index - 1)
+        d: Mapping[Hashable, m.VMobject] = {
+            "mobs": self.mobs[:, -1],
+            "olds": self.olds[:, -1],
+            "rects": self.rects[:, -1],
+        }
+        last_col = m.VDict(d).set_z_index(self.z_index - 1)
         last_col_rects = self.rects[:, -1]
 
         attrs_to_shift = ["alignment", "mob", "old", "rect"]
