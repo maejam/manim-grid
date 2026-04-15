@@ -1,6 +1,7 @@
-from collections.abc import Generator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Any, Literal, Self, cast
 
 import manim as m
@@ -506,22 +507,78 @@ class Grid(m.Group):
         viewport = self._compute_viewport(m.Rectangle())
         return Stencil(clip=viewport, wrapped=self.lattice).set_stroke(opacity=0)
 
-    def _compute_viewport(self, viewport: m.Mobject) -> m.VMobject:
-        """(Re)Compute the viewport."""
-        visible_area = self.rects[: self._num_visible_rows, : self._num_visible_cols]
-        viewport.surround(m.VGroup(visible_area), buff=0, stretch=True)
+    def _compute_viewport(
+        self,
+        viewport: m.Mobject,
+        predicate: Callable[..., bool] = lambda: True,
+        **kwargs: Any,
+    ) -> m.VMobject:
+        """(Re)Compute the viewport.
+
+        Can be used as an updater using a partial or lambda to set the extra parameters.
+
+        Parameters
+        ----------
+        viewport
+            The viewport (=stencil.clip) that will be computed/updated.
+        predicate
+            A callable taking any number of arguments and keyword arguments and
+            returning a boolean. The updater code will be executed only when this
+            predicate returns `True`.
+        **kwargs
+            Keyword arguments passed to the predicate.
+
+        Returns
+        -------
+        The viewport mobject, modified or not.
+
+        """
+        if predicate(**kwargs):
+            visible_rects = self.rects[
+                : self._num_visible_rows, : self._num_visible_cols
+            ]
+            viewport.surround(m.VGroup(visible_rects), buff=-0.0, stretch=True)
         return cast(m.VMobject, viewport)
 
     @contextmanager
-    def update_viewport(self) -> Generator[None, None, None]:
-        """Recompute the viewport to encompass the visible rows/cols while active."""
+    def update_viewport(
+        self,
+        predicate: Callable[..., bool] = lambda: True,
+        **kwargs: Any,
+    ) -> Generator[None, None, None]:
+        """Recompute the viewport to encompass the visible rows/cols while active.
+
+        This is meant to be used as a context manager. While active, the viewport will
+        be updated. Useful in insertion methods for example when the inserted
+        row/column has a size that differs from the last visible row/column.
+
+        Because updaters can be expensive:
+         - this context manager attaches the updater while entering and detaches it
+           when exiting. This allows to target a specific piece of code easily.
+         - a predicate function can be passed to target even more precisely when the
+           updater should run and when it shouldn't. This is also very useful to start
+           the viewport updating only when a given condition is met.
+
+        Parameters
+        ----------
+        predicate
+            A callable taking any number of arguments and keyword arguments and
+            returning a boolean. The updater code will be executed only when this
+            predicate returns `True`.
+        **kwargs
+            Keyword arguments passed to the predicate.
+
+        """
+        updater_func = partial(self._compute_viewport, predicate=predicate, **kwargs)
         if self._stencil is not None:
-            self.stencil.clip.add_updater(self._compute_viewport, call_updater=True)
+            self.stencil.clip.add_updater(
+                updater_func, call_updater=predicate(**kwargs)
+            )
         try:
             yield
         finally:
             if self._stencil is not None:
-                self.stencil.clip.remove_updater(self._compute_viewport)
+                self.stencil.clip.remove_updater(updater_func)
 
     @property
     def frame(self) -> m.Difference:
@@ -719,7 +776,7 @@ class Grid(m.Group):
                 "Define `num_visible_rows` or `num_visible_cols` or both."
             )
 
-        # stencil.clip and grid.frame should not be shifted
+        # viewport and grid.frame should not be shifted
         with self.keep_viewport_static():
             self.shift(np.array(direction) * -munits)
 
@@ -735,7 +792,7 @@ class Grid(m.Group):
         height: float | None = None,
         label: str | None = None,
         shift_tags: bool = False,
-    ) -> Generator[tuple[m.Animation, m.VGroup], None, None]:
+    ) -> Generator[tuple[m.Animation, m.VGroup, m.ValueTracker], None, None]:
         """Insert a new row in the Grid.
 
         The Grid geometry will not be changed and cells identity is preserved after
@@ -770,7 +827,7 @@ class Grid(m.Group):
 
         Yields
         ------
-        tuple[Animation, VGroup]
+        tuple[Animation, VGroup, ValueTracker]
             The first element in the yielded tuple is the shift animation for the rows
             below the inserted one. It can be played directly. If not played, an instant
             shift will happen when exiting the context manager.
@@ -778,6 +835,9 @@ class Grid(m.Group):
             (`mob`, `old` and `rect`). It can be used to animate the last row removal
             (e.g. FadeOut). These mobjects will be removed from the grid when exiting
             the context manager.
+            The third element is a ValueTracker tracking the advancement of the shift
+            animation. Can be useful in conjunction with :meth:`update_viewport` for
+            instance to precisely time the start of the viewport animation.
 
         Raises
         ------
@@ -793,7 +853,7 @@ class Grid(m.Group):
         >>> with grid.insert_row(3): pass
 
         >>> # with pre-styling and animation
-        >>> with grid.insert_row(3, label="new_row") as (anim, last_row):
+        >>> with grid.insert_row(3, label="new_row") as (anim, last_row, tracker):
         >>>     # the grid is already in the post insertion state internally
         >>>     grid.rects["new_row"].set_stroke(opacity=1)
         >>>     self.play(FadeOut(last_row))
@@ -899,12 +959,16 @@ class Grid(m.Group):
         def animation_factory(mob: m.Mobject) -> m.Animation:
             return m.ApplyMethod(mob.shift, shift_vec)
 
+        alpha_tracker = m.ValueTracker()
+
         animation = TrackedLazyAnimation(
-            animation_factory=animation_factory, mobject_factory=grp_factory
+            alpha_tracker=alpha_tracker,
+            animation_factory=animation_factory,
+            mobject_factory=grp_factory,
         )
 
         try:
-            yield (animation, last_row)
+            yield (animation, last_row, alpha_tracker)
 
         finally:
             self.remove(*last_row)
@@ -921,7 +985,7 @@ class Grid(m.Group):
         width: float | None = None,
         label: str | None = None,
         shift_tags: bool = False,
-    ) -> Generator[tuple[m.Animation, m.VGroup], None, None]:
+    ) -> Generator[tuple[m.Animation, m.VGroup, m.ValueTracker], None, None]:
         """Insert a new column in the Grid.
 
         The Grid geometry will not be changed and cells identity is preserved after
@@ -958,7 +1022,7 @@ class Grid(m.Group):
 
         Yields
         ------
-        tuple[Animation, VGroup]
+        tuple[Animation, VGroup, ValueTracker]
             The first element in the yielded tuple is the shift animation for the
             columns below the inserted one. It can be played directly. If not played,
             an instant shift will happen when exiting the context manager.
@@ -966,6 +1030,9 @@ class Grid(m.Group):
             (`mob`, `old` and `rect`). It can be used to animate the last column removal
             (e.g. FadeOut). These mobjects will be removed from the grid when exiting
             the context manager.
+            The third element is a ValueTracker tracking the advancement of the shift
+            animation. Can be useful in conjunction with :meth:`update_viewport` for
+            instance to precisely time the start of the viewport animation.
 
         Raises
         ------
@@ -981,7 +1048,7 @@ class Grid(m.Group):
         >>> with grid.insert_column(3): pass
 
         >>> # with pre-styling and animation
-        >>> with grid.insert_column(3, label="new_col") as (anim, last_col):
+        >>> with grid.insert_column(3, label="new_col") as (anim, last_col, tracker):
         >>>     # the grid is already in the post insertion state internally
         >>>     grid.rects[:, "new_col"].set_stroke(opacity=1)
         >>>     self.play(FadeOut(last_col))
@@ -1088,12 +1155,16 @@ class Grid(m.Group):
         def animation_factory(mob: m.Mobject) -> m.Animation:
             return m.ApplyMethod(mob.shift, shift_vec)
 
+        alpha_tracker = m.ValueTracker()
+
         animation = TrackedLazyAnimation(
-            animation_factory=animation_factory, mobject_factory=grp_factory
+            alpha_tracker=alpha_tracker,
+            animation_factory=animation_factory,
+            mobject_factory=grp_factory,
         )
 
         try:
-            yield (animation, last_col)
+            yield (animation, last_col, alpha_tracker)
 
         finally:
             self.remove(*last_col)
