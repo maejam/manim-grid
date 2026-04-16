@@ -1005,7 +1005,8 @@ class Grid(m.Group):
             yield (animation, last_row, alpha_tracker)
 
         finally:
-            self.remove(*last_row)
+            for vgrp in last_row:
+                self.remove(*vgrp)
             if animation.status == "not played":
                 grp = grp_factory()
                 grp.shift(shift_vec)
@@ -1226,7 +1227,8 @@ class Grid(m.Group):
             yield (animation, last_col, alpha_tracker)
 
         finally:
-            self.remove(*last_col)
+            for vgrp in last_col:
+                self.remove(*vgrp)
             if animation.status == "not played":
                 grp = grp_factory()
                 grp.shift(shift_vec)
