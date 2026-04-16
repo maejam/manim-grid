@@ -895,7 +895,7 @@ class Grid(m.Group):
                     "You must provide the height for the inserted row."
                 )
             else:
-                height = self.lattice[0].height
+                height = self._row_heights[0]
 
         self._row_heights.insert(row_index, height)
         self._row_heights.pop()
@@ -1116,7 +1116,7 @@ class Grid(m.Group):
                     "You must provide the width for the inserted column."
                 )
             else:
-                width = self.lattice[0].width
+                width = self._col_widths[0]
 
         self._col_widths.insert(col_index, width)
         self._col_widths.pop()
