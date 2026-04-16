@@ -990,6 +990,8 @@ class Grid(m.Group):
         )
 
         try:
+            yield (animation, last_row, alpha_tracker)
+
             signal("row_insertion_processed").send(
                 self,
                 row_index=row_index,
@@ -1001,8 +1003,6 @@ class Grid(m.Group):
                 shift_vec=shift_vec,
                 last_row=last_row,
             )
-
-            yield (animation, last_row, alpha_tracker)
 
         finally:
             for vgrp in last_row:
@@ -1212,6 +1212,8 @@ class Grid(m.Group):
         )
 
         try:
+            yield (animation, last_col, alpha_tracker)
+
             signal("column_insertion_processed").send(
                 self,
                 col_index=col_index,
@@ -1223,8 +1225,6 @@ class Grid(m.Group):
                 shift_vec=shift_vec,
                 last_col=last_col,
             )
-
-            yield (animation, last_col, alpha_tracker)
 
         finally:
             for vgrp in last_col:
