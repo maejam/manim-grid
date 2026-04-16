@@ -14,7 +14,7 @@ The blinker documentation can be found at https://blinker.readthedocs.io/en/stab
 
 from manim import *
 
-from manim_grid import Grid, mobs_added, mob_inserted
+from manim_grid import Grid, mob_inserted, mobs_added
 
 
 # Functions can be registered easily
@@ -28,7 +28,7 @@ class Signals(Scene):
         self.grid = Grid([1] * 5, [1] * 3)
 
         # Instance methods cannot be registered with the decorator syntax.
-        # You can register them in inline or make them static (see below)
+        # You can register them inline or make them static (see below)
         mob_inserted.connect(self.rotate_mob_in_cell_2_1)
 
         # or better yet, connect with a specific sender (here a cell)
