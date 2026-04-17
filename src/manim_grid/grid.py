@@ -1,5 +1,5 @@
 from collections.abc import Callable, Generator, Hashable, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, Literal, Self, cast
@@ -587,15 +587,11 @@ class Grid(m.Group):
 
         """
         updater_func = partial(self._compute_viewport, predicate=predicate, **kwargs)
-        if self._stencil is not None:
-            self.stencil.clip.add_updater(
-                updater_func, call_updater=predicate(**kwargs)
-            )
+        self.viewport.add_updater(updater_func, call_updater=predicate(**kwargs))
         try:
             yield
         finally:
-            if self._stencil is not None:
-                self.stencil.clip.remove_updater(updater_func)
+            self.viewport.remove_updater(updater_func)
 
     @property
     def frame(self) -> m.Difference:
@@ -621,12 +617,43 @@ class Grid(m.Group):
         and the grid viewport. It is the user responsibility to position the frame where
         it should be.
         """
+        with suppress(GridFrameError):
+            self.remove(self.frame)
+
         if vmobject is None:
-            if self.frame is not None:
-                self.remove(self.frame)
+            self._frame = None
+
         else:
+            self._frame_vmob = vmobject
+            self._frame_top_margin = abs(
+                self.viewport.get_y(m.UP) - vmobject.get_y(m.UP)
+            )
+            self._frame_bottom_margin = abs(
+                self.viewport.get_y(m.DOWN) - vmobject.get_y(m.DOWN)
+            )
+            self._frame_right_margin = abs(
+                self.viewport.get_x(m.RIGHT) - vmobject.get_x(m.RIGHT)
+            )
+            self._frame_left_margin = abs(
+                self.viewport.get_x(m.LEFT) - vmobject.get_x(m.LEFT)
+            )
             self._frame = m.Difference(vmobject, self.viewport).match_style(vmobject)
             self.add(self._frame)
+
+    def _update_frame(self) -> None:
+        """Update the frame to the viewport size keeping margins fixed."""
+        frame = self._frame_vmob.stretch_to_fit_height(
+            self.viewport.height + self._frame_top_margin + self._frame_bottom_margin
+        )
+        frame.stretch_to_fit_width(
+            self.viewport.width + self._frame_right_margin + self._frame_left_margin
+        )
+
+        frame.align_to(self.viewport, m.UP).shift(m.UP * self._frame_top_margin)
+        frame.align_to(self.viewport, m.LEFT).shift(m.LEFT * self._frame_left_margin)
+
+        diff = m.Difference(frame, self.viewport)
+        self.frame.set_points(diff.points)
 
     @contextmanager
     def keep_viewport_static(self) -> Generator[None, None, None]:
