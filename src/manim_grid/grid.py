@@ -539,9 +539,8 @@ class Grid(m.Group):
         viewport
             The viewport (=stencil.clip) that will be computed/updated.
         predicate
-            A callable taking any number of arguments and keyword arguments and
-            returning a boolean. The updater code will be executed only when this
-            predicate returns `True`.
+            A callable taking any number of keyword arguments and returning a boolean.
+            The code will be executed only when this predicate returns `True`.
         **kwargs
             Keyword arguments passed to the predicate.
 
@@ -551,10 +550,41 @@ class Grid(m.Group):
 
         """
         if predicate(**kwargs):
+            # take inner rects stroke widths into account
             visible_rects = self.rects[
                 : self._num_visible_rows, : self._num_visible_cols
             ]
-            viewport.surround(m.VGroup(visible_rects), buff=-0.0, stretch=True)
+            vp_stroke = viewport.get_stroke_width()
+            max_top_rects_stroke = max(
+                [rect.get_stroke_width() for rect in self.rects[0]]
+            )
+            max_bottom_rects_stroke = max(
+                [rect.get_stroke_width() for rect in self.rects[-1]]
+            )
+            max_left_rects_stroke = max(
+                [rect.get_stroke_width() for rect in self.rects[:, 0]]
+            )
+            max_right_rects_stroke = max(
+                [rect.get_stroke_width() for rect in self.rects[:, -1]]
+            )
+
+            buff = vp_stroke / 100  # stroke is expressed in 1/100 munits
+
+            # NOTE: surround does not include the surrounded mobjects stroke
+            # => we use a SurroundingRectangle (that does) and surround it to keep the
+            # original shape unchanged
+            target = m.SurroundingRectangle(
+                m.VGroup(visible_rects), buff=buff, stroke_width=0
+            )
+
+            # readjust position in case top/bottom or left/right unevenness
+            x_offset = (max_left_rects_stroke - max_right_rects_stroke) / 4
+            y_offset = (max_top_rects_stroke - max_bottom_rects_stroke) / 4
+            target.shift(m.LEFT * (x_offset / 100) + m.UP * (y_offset / 100))
+            viewport.match_points(target)
+
+            if self._frame is not None:
+                self._update_frame()
         return cast(m.VMobject, viewport)
 
     @contextmanager
@@ -587,10 +617,11 @@ class Grid(m.Group):
 
         """
         updater_func = partial(self._compute_viewport, predicate=predicate, **kwargs)
-        self.viewport.add_updater(updater_func, call_updater=predicate(**kwargs))
+        self.viewport.add_updater(updater_func)
         try:
             yield
         finally:
+            updater_func(viewport=self.viewport)
             self.viewport.remove_updater(updater_func)
 
     @property
