@@ -552,38 +552,42 @@ class Grid(m.Group):
 
         """
         if predicate(**kwargs):
-            # take inner rects stroke widths into account
+            # take inner rects stroke widths into account (expressed in 1/100 munits)
             visible_rects = self.rects[
                 : self._num_visible_rows, : self._num_visible_cols
             ]
-            vp_stroke = viewport.get_stroke_width()
-            max_top_rects_stroke = max(
-                [rect.get_stroke_width() for rect in self.rects[0]]
+            vp_stroke = viewport.get_stroke_width() / 100
+            max_top_rects_stroke = (
+                max([rect.get_stroke_width() for rect in self.rects[0]]) / 100
             )
-            max_bottom_rects_stroke = max(
-                [rect.get_stroke_width() for rect in self.rects[-1]]
+            max_bottom_rects_stroke = (
+                max([rect.get_stroke_width() for rect in self.rects[-1]]) / 100
             )
-            max_left_rects_stroke = max(
-                [rect.get_stroke_width() for rect in self.rects[:, 0]]
+            max_left_rects_stroke = (
+                max([rect.get_stroke_width() for rect in self.rects[:, 0]]) / 100
             )
-            max_right_rects_stroke = max(
-                [rect.get_stroke_width() for rect in self.rects[:, -1]]
+            max_right_rects_stroke = (
+                max([rect.get_stroke_width() for rect in self.rects[:, -1]]) / 100
             )
 
-            buff = vp_stroke / 100  # stroke is expressed in 1/100 munits
+            buff_x = (
+                vp_stroke / 2 + (max_left_rects_stroke + max_right_rects_stroke) / 4
+            )
+            buff_y = (
+                vp_stroke / 2 + (max_top_rects_stroke + max_bottom_rects_stroke) / 4
+            )
 
-            # NOTE: surround does not include the surrounded mobjects stroke
-            # => we use a SurroundingRectangle (that does) and surround it to keep the
-            # original shape unchanged
+            # NOTE: surround does accept a buff tuple => we use a SurroundingRectangle
+            # and surround it to keep the viewport initial geometry
             target = m.SurroundingRectangle(
-                m.VGroup(visible_rects), buff=buff, stroke_width=0
+                m.VGroup(visible_rects), buff=(buff_x, buff_y), stroke_width=0
             )
 
             # readjust position in case top/bottom or left/right unevenness
             x_offset = (max_left_rects_stroke - max_right_rects_stroke) / 4
             y_offset = (max_top_rects_stroke - max_bottom_rects_stroke) / 4
-            target.shift(m.LEFT * (x_offset / 100) + m.UP * (y_offset / 100))
-            viewport.match_points(target)
+            target.shift(m.LEFT * x_offset + m.UP * y_offset)
+            viewport.surround(target, buff=0, stretch=True)
 
             if self._frame is not None:
                 self._update_frame()
