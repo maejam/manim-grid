@@ -522,7 +522,9 @@ class Grid(m.Group):
     def _create_stencil(self) -> Stencil:
         """Create the stencil to hide cells that should not be visible."""
         viewport = self._compute_viewport(m.Rectangle())
-        return Stencil(clip=viewport, wrapped=self.lattice).set_stroke(opacity=0)
+        return Stencil(
+            clip=viewport, wrapped=m.VGroup(self.lattice, viewport)
+        ).set_stroke(opacity=0)
 
     def _compute_viewport(
         self,
@@ -621,7 +623,11 @@ class Grid(m.Group):
         try:
             yield
         finally:
+            # update viewport (and stencil to cover it if it expands) for static frames
             updater_func(viewport=self.viewport)
+            if self._stencil is not None:
+                self.stencil.update()
+
             self.viewport.remove_updater(updater_func)
 
     @property
