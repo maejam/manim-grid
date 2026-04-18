@@ -587,7 +587,7 @@ class Grid(m.Group):
             x_offset = (max_left_rects_stroke - max_right_rects_stroke) / 4
             y_offset = (max_top_rects_stroke - max_bottom_rects_stroke) / 4
             target.shift(m.LEFT * x_offset + m.UP * y_offset)
-            viewport.surround(target, buff=0, stretch=True)
+            viewport.match_points(target)
 
             if self._frame is not None:
                 self._update_frame()
@@ -678,7 +678,9 @@ class Grid(m.Group):
             self._frame_left_margin = abs(
                 self.viewport.get_x(m.LEFT) - vmobject.get_x(m.LEFT)
             )
-            self._frame = m.Difference(vmobject, self.viewport).match_style(vmobject)
+            vp_stroke = self.viewport.get_stroke_width() / 100
+            clip = m.SurroundingRectangle(self.viewport, buff=vp_stroke / 2)
+            self._frame = m.Difference(vmobject, clip).match_style(vmobject)
             self.add(self._frame)
 
     def _update_frame(self) -> None:
