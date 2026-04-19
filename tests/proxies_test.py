@@ -4,7 +4,7 @@ import pytest
 
 from manim_grid.exceptions import GridValueError
 from manim_grid.grid import Cell, EmptyMobject, Grid
-from manim_grid.proxies.tags_proxy import MISSING, Tags, TagsList
+from manim_grid.tags import MISSING, Tags, TagsList
 
 
 # ----------------------------------------------------------------------

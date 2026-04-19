@@ -22,7 +22,8 @@ from manim_grid.labels import LabelMapper
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
 from manim_grid.proxies.rects_proxy import RectsProxy
-from manim_grid.proxies.tags_proxy import Tags, TagsProxy
+from manim_grid.proxies.tags_proxy import TagsProxy
+from manim_grid.tags import Tags
 
 
 class EmptyMobject(m.VMobject):

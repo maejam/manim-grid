@@ -4,7 +4,7 @@ import pytest
 
 from manim_grid.grid import Cell, EmptyMobject
 from manim_grid.proxies.base import MISSING
-from manim_grid.proxies.tags_proxy import DELETED
+from manim_grid.tags import DELETED
 
 
 # ----------------------------------------------------------------------
