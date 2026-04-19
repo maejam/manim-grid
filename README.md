@@ -1,8 +1,8 @@
-# 📐 `manim-grid` - A Simple Grid Container to ease Mobjects positioning and referencing  
+# 📐 `manim-grid` - A powerful Grid Container to ease Mobjects positioning and referencing  
 
 `manim-grid` is a [Manim](https://www.manim.community/) plugin that offers a new way to build scenes and interact with manim. It creates a rectangular grid of cells in which you can place any `Mobject` by using a powerful, [NumPy](https://numpy.org/)-based natural indexing. It handles mobject positioning, automation and provides custom animations.  
 
-It is born from an attempt to build a better `Code` Mobject, more flexible and easier to work with. This goal quickly turned into a flexible multi-purpose tool. It can be used as a "ruler" to position mobjects in a scene, retrieve them later, and re-assign them on the fly. It can also be used to build event-based scenes.
+It is born from an attempt to build a better `Code` Mobject, more flexible and easier to work with. This goal quickly turned into a flexible multi-purpose tool. It can be used as a ruler to position mobjects in a scene, retrieve them later, and re-assign them on the fly. It can also be used to build event-based scenes.
 
 ---  
 
@@ -11,9 +11,8 @@ It is born from an attempt to build a better `Code` Mobject, more flexible and e
 - [Features](#features)  
 - [Installation](#installation)  
 - [Getting Started](#getting-started)  
-  - [Example](#example)
-  - [Tips](#tips)
 - [More Examples](#more-examples)
+- [Tips](#tips)
 - [Internals](#internals)  
   - [Cell](#cell)  
   - [Proxies (`mobs`, `olds`, `rects`, `tags`)](#proxies)  
@@ -31,10 +30,11 @@ It is born from an attempt to build a better `Code` Mobject, more flexible and e
 - **Pythonic NumPy-based indexing** - the full power of NumPy indexing is supported: negative indices, slices, masks...
 - **String labels** - string identifiers can be added to rows and columns to make indexing even more expressive.  
 - **Alignment vectors** - align `Mobjects` to any edge/corner in cells.  
-- **Powerful management of cell attributes** - access any attribute for a single cell or in bulk transparently.  
+- **Powerful management of cell attributes** - access any attribute for a single cell or in bulk as you would a numpy array.  
 - **Per-cell metadata** - add key/value tags to cells.  
 - **Scrolling** - the `scroll` method lets you scroll the grid in any direction with a smooth animation.
-- **Frame** - add a custom frame around the grid that plays well with scrolling.
+- **Inserting** - the `insert_row` and `insert_column` methods let you..., well..., insert rows and columns. With full control over the visual result.
+- **Frame** - add a custom frame around the grid that plays well with its dynamic nature.
 - **Signals** - react to events to automate the Grid behaviour.
 - **Fully typed** - for better library and end-user code quality.  
 
@@ -60,8 +60,6 @@ Requires `Python >= 3.11, < 3.14` and `manim >= 0.19`
 
 > [!NOTE]
 > It is necessary to be familiar with [NumPy indexing](https://numpy.org/doc/stable/user/basics.indexing.html) to fully benefit from this plugin.  
-
-### Example  
 
 https://github.com/user-attachments/assets/f1364a89-95dc-4109-bbc1-510232f87ecc  
 
@@ -101,11 +99,6 @@ class GettingStarted(Scene):
         self.play(ReplacementTransform(grid.olds[0, 0], grid.mobs[0, 0]))
 ```  
 
-### Tips  
-
-- The Grid internal state and its submobjects are 2 different things. When attributing mobjects to cells (`grid.mobs[...] = ...`), **they are not added as submobjects** to the Grid, which means they will not be visible and will not be transformed with the Grid. A second step is necessary: `grid.add(grid.mobs[...])`. This design is intentional for greater control over transitions and animations. This second step (adding as submobjects) can be automated with Signals.
-- It is **highly recommended to unpack any Group/VGroup when adding/removing submobjects**. i.e., `grid.add(*grid.mobs[...])` is prefered over `grid.add(grid.mobs[...])`. This is because `grid.mobs[...]` returns a VGroup when multiple mobjects are targeted. Adding it directly would require to keep a reference to that Group instance to remove it later. Unpacking it gives more control over removing individual mobjects later.  
-
 ---  
 
 ## More Examples  
@@ -121,6 +114,13 @@ The following examples can be found in the [examples](examples/) directory. They
 8. [Alternative Constructors](examples/08-alternative_constructors.py)
 9. [Signals](examples/09-signals.py)
 10. [Inserting rows/columns](examples/10-inserting.py)
+
+---  
+
+### Tips  
+
+- It is necessary to understand the distinction between the Grid internal state (a NumPy array of Cells) and the Grid submobjects. When attributing mobjects to cells (`grid.mobs[...] = ...`), **they are not added as submobjects** to the Grid, which means they will not be visible and will not be transformed with the Grid. A second step is necessary: `grid.add(grid.mobs[...])`. This design is intentional for greater control over transitions and animations. This second step (adding as submobjects) can be automated with Signals.
+- It is **highly recommended to unpack any Group/VGroup when adding/removing submobjects**. i.e., `grid.add(*grid.mobs[...])` is prefered over `grid.add(grid.mobs[...])`. This is because `grid.mobs[...]` returns a VGroup when multiple mobjects are targeted. Adding it directly would require to keep a reference to that Group instance to remove it later. Unpacking it gives more control over removing individual mobjects later.  
 
 ---  
 
@@ -149,7 +149,6 @@ The Grid provides access to the underlying NumPy array of cell objects via `grid
 
 ### Tags  
 Each `Cell` holds a `Tags` instance in their `tags` attribute. This class acts as a python dictionary with dot attribute access.
-
 This `Tags` instance is returned when indexing a single `Cell`, whereas a `TagsList` instance is returned when indexing multiple cells through the `TagsProxy`. `TagsList` is a `list` subclass which also defines all dict methods as well as `__getattr__`, `__setattr__`, and  `__delattr__`. This allows to interact with a `TagsList` instance as if it where a single `Tags` instance, effectively acting on all child `Tags` instances in one command.  
 
 For example, `grid.tags[:].update(foo="bar")` will update all `Tags` instances in the `TagsList` returned by the `TagsProxy` (the `grid.tags[:]` part). Similarly, `grid.tags[:].pop("foo")` will pop the `foo` key from all the child `Tags` in the `TagsList` and will return the popped values in a list. If the `foo` key is missing in any `Tags`, it will raise a `KeyError`. Pass a default value to avoid this: `grid.tags[:].pop("foo", MISSING)`.  
@@ -157,9 +156,9 @@ For example, `grid.tags[:].update(foo="bar")` will update all `Tags` instances i
 All dict methods work on `TagsList` in a similar way they work on `Tags`.  
 
 ### Stencil Viewport and Scrolling  
-When a `Grid` is instantiated with `num_visible_rows` and/or `num_visible_cols`, a [Stencil](https://github.com/maejam/manim-utils) instance is added to the grid and is stored in the `grid._stencil` attribute accesible via the `grid.stencil` property. Its purpose is to hide cells that should not be visible. It is a `manim.Difference` object between the whole grid and a `SurroundingRectangle` around the visible cells that defines the viewport boundaries. The stencil is painted the same color as the scene background to give the impression that only the viewport is added to the screen. The stencil is always transformed with the grid and stays in sync with it.
-
-The scrolling animation is actually the whole grid moving the opposite direction (scrolling DOWN is shifting the grid UP), while the viewport stays in place and the `Difference` is recomputed every frame with an updater. This is why scrolling past the last row/column gives weird artifacts: this is the result of the `Difference` between a `Mobject` and another one that does not entirely intersect it.
+When a `Grid` is instantiated with `num_visible_rows` and/or `num_visible_cols`, a [Stencil](https://github.com/maejam/manim-utils) instance is added to the grid and is stored in the `grid._stencil` attribute accesible via the `grid.stencil` property. Its purpose is to hide cells that should not be visible. It is a `manim.Difference` object between the whole grid and a `Rectangle` surrounding the visible cells that defines the viewport boundaries. The stencil is painted the same color as the scene background to give the impression that only the viewport is added to the screen. The stencil is always transformed with the grid and stays in sync with it. The `viewport`, i.e. the clip in the `Stencil` usually stays in sync as well, except when using two context managers:
+ - `Grid.keep_viewport_static` allows the Grid to move around while the viewport stays in place. It is used for scrolling for example: the scrolling animation is actually the whole grid moving the opposite direction (scrolling DOWN is shifting the grid UP), while the viewport stays in place and the `Difference` is recomputed every frame with an updater.
+ - `Grid.update_viewport` allows the viewport to be dynamically resized to still encompass `num_visible_rows` and `num_visible_cols` while rows/columns are being resized for example.  
 
 The following snippet shows how the `stencil` (YELLOW) covers all the hidden cells, while the `viewport` (RED) acts like a window on the visible cells. After scrolling DOWN (grid2 on the right), the whole grid is shifted UP along with the stencil, while the viewport stays in place:  
 
