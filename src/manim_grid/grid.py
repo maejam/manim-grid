@@ -668,38 +668,58 @@ class Grid(m.Group):
             self._frame = None
 
         else:
-            self._frame_vmob = vmobject
-            self._frame_top_margin = abs(
-                self.viewport.get_y(m.UP) - vmobject.get_y(m.UP)
-            )
-            self._frame_bottom_margin = abs(
-                self.viewport.get_y(m.DOWN) - vmobject.get_y(m.DOWN)
-            )
-            self._frame_right_margin = abs(
-                self.viewport.get_x(m.RIGHT) - vmobject.get_x(m.RIGHT)
-            )
-            self._frame_left_margin = abs(
-                self.viewport.get_x(m.LEFT) - vmobject.get_x(m.LEFT)
-            )
             vp_stroke = self.viewport.get_stroke_width() / 100
-            clip = m.SurroundingRectangle(self.viewport, buff=vp_stroke / 2)
-            self._frame = m.Difference(vmobject, clip).match_style(vmobject)
+            self._frame_vmob = vmobject
+            self._frame_top_margin = (
+                abs(self.viewport.get_y(m.UP) - vmobject.get_y(m.UP)) + vp_stroke / 2
+            )
+            self._frame_bottom_margin = (
+                abs(self.viewport.get_y(m.DOWN) - vmobject.get_y(m.DOWN))
+                + vp_stroke / 2
+            )
+            self._frame_right_margin = (
+                abs(self.viewport.get_x(m.RIGHT) - vmobject.get_x(m.RIGHT))
+                + vp_stroke / 2
+            )
+            self._frame_left_margin = (
+                abs(self.viewport.get_x(m.LEFT) - vmobject.get_x(m.LEFT))
+                + vp_stroke / 2
+            )
+            self._frame = self._make_frame(vmobject)
             self.add(self._frame)
 
-    def _update_frame(self) -> None:
+    def _update_frame(self, frame: m.Mobject) -> None:
         """Update the frame to the viewport size keeping margins fixed."""
-        frame = self._frame_vmob.stretch_to_fit_height(
-            self.viewport.height + self._frame_top_margin + self._frame_bottom_margin
+        vp_stroke = self.viewport.get_stroke_width() / 100
+        vmobject = self._frame_vmob.stretch_to_fit_height(
+            self.viewport.height
+            + self._frame_top_margin
+            + self._frame_bottom_margin
+            + vp_stroke
         )
-        frame.stretch_to_fit_width(
-            self.viewport.width + self._frame_right_margin + self._frame_left_margin
+        vmobject.stretch_to_fit_width(
+            self.viewport.width
+            + self._frame_right_margin
+            + self._frame_left_margin
+            + vp_stroke
         )
 
-        frame.align_to(self.viewport, m.UP).shift(m.UP * self._frame_top_margin)
-        frame.align_to(self.viewport, m.LEFT).shift(m.LEFT * self._frame_left_margin)
+        vmobject.align_to(self.viewport, m.UP).shift(
+            m.UP * (self._frame_top_margin + vp_stroke / 2)
+        )
+        vmobject.align_to(self.viewport, m.LEFT).shift(
+            m.LEFT * (self._frame_left_margin + vp_stroke / 2)
+        )
 
-        diff = m.Difference(frame, self.viewport)
-        self.frame.set_points(diff.points)
+        frame = self._make_frame(vmobject)
+        self.frame.set_points(frame.points)
+
+    def _make_frame(self, vmobject: m.VMobject) -> m.Difference:
+        """Build the frame Difference from a vmobject."""
+        vp_stroke = self.viewport.get_stroke_width() / 100
+        clip = m.SurroundingRectangle(self.viewport, buff=vp_stroke / 2)
+        frame = m.Difference(vmobject, clip).match_style(vmobject)
+        return frame
 
     @contextmanager
     def keep_viewport_static(self) -> Generator[None, None, None]:
