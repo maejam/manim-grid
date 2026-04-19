@@ -589,8 +589,6 @@ class Grid(m.Group):
             target.shift(m.LEFT * x_offset + m.UP * y_offset)
             viewport.match_points(target)
 
-            if self._frame is not None:
-                self._update_frame()
         return cast(m.VMobject, viewport)
 
     @contextmanager
@@ -624,6 +622,9 @@ class Grid(m.Group):
         """
         updater_func = partial(self._compute_viewport, predicate=predicate, **kwargs)
         self.viewport.add_updater(updater_func)
+
+        if self._frame is not None:
+            self.frame.add_updater(self._update_frame)
         try:
             yield
         finally:
@@ -633,6 +634,8 @@ class Grid(m.Group):
                 self.stencil.update()
 
             self.viewport.remove_updater(updater_func)
+            if self._frame is not None:
+                self.frame.remove_updater(self._update_frame)
 
     @property
     def frame(self) -> m.Difference:
