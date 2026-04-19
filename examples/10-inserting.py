@@ -101,7 +101,6 @@ class InsertingWithSignal(Scene):
         grid.rects[::2].set_fill(opacity=0.1)
         grid.rects[1::2].set_fill(opacity=0)
 
-
     def setup(self):
         row_insertion_processed.connect(self.on_row_inserted)
 
@@ -141,7 +140,7 @@ class InsertingWithSignal(Scene):
         # it is possible to add custom code before the signal handler on a
         # per-insertion basis
         with grid.insert_row(1):
-            grid.mobs[3,3] = Dot(color=RED)
-            grid.add(grid.mobs[3,3])
+            grid.mobs[3, 3] = Dot(color=RED)
+            grid.add(grid.mobs[3, 3])
 
         self.wait()

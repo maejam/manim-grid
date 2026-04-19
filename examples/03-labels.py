@@ -17,7 +17,7 @@ class LabelsAndNumbers(Scene):
         # Add the labels to the grid as Text mobjects
         grid.mobs[0, :] = grid.col_labels(font_size=16)
         # row_labels was not provided. We can still add row_numbers.
-        # start/stop/step are optional. If not given a list will as many numbers
+        # start/stop/step are optional. If not given a list with as many numbers
         # as the number of rows is generated.
         grid.mobs[1:, 0] = grid.row_numbers(
             start=1, stop=5, step=1, font_size=26, color=BLUE

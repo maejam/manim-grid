@@ -34,8 +34,4 @@ class Scrolling(Scene):
         self.wait()
 
         # Alternatively, free scrolling is always possible
-        self.play(grid.animate.free_scroll(RIGHT, 1.7))
-
-        # Scrolling past the last row/column gives weird artifacts
-        # Add empty rows/cols to avoid them
-        self.play(grid.animate.scroll(DOWN, 5))
+        self.play(grid.animate.free_scroll(RIGHT * 1.7))

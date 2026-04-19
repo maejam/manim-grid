@@ -3,8 +3,7 @@
 Proxies (grid.mobs/olds/tags/rects) provide a `mask` method that can be used to
 build a boolean NumPy array. This array can then be used on any proxy to filter
 the cells that satisfies the expressed condition.
-The possibilities are limitless. This example tries to demonstrates some possible
-uses with a (very) contrived example.
+This scene tries to demonstrates some possible uses with a (very) contrived example.
 """
 
 from manim import *
@@ -67,4 +66,11 @@ class Masking(Scene):
         grid.tags[is_circle & is_blue].mob = "blue_circle"
 
         # later, paint those tagged cells rectangles WHITE building a mask on the fly
-        grid.rects[grid.tags[:].mob == "blue_circle"].set_fill(WHITE, opacity=1)
+        grid.rects[np.array(grid.tags[:].mob).reshape(3, 3) == "blue_circle"].set_fill(
+            WHITE, opacity=0.2
+        )
+
+        print(grid.tags)
+        # [['Tags()' "Tags(mob='blue_circle')" 'Tags()']
+        #  ['Tags()' "Tags(mob='blue_circle')" 'Tags()']
+        #  ['Tags()' 'Tags()' 'Tags()']]

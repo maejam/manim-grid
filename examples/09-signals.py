@@ -9,7 +9,7 @@ are endless.
 The available signals as well as their documentation can be found in
 `src/manim-grid/signals.py`.
 
-The blinker documentation can be found at https://blinker.readthedocs.io/en/stable/
+The blinker documentation can be found here: https://blinker.readthedocs.io/en/stable/
 """
 
 from manim import *
@@ -20,7 +20,7 @@ from manim_grid import Grid, mob_inserted, mobs_added
 # Functions can be registered easily
 @mobs_added.connect
 def log_mobs_added(grid, index, mobs):
-    logger.info(f"You just added a {len(mobs)} object(s).")
+    logger.info(f"You just added a {len(mobs)} object(s) to the Grid.")
 
 
 class Signals(Scene):
