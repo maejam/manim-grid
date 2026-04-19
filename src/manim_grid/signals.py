@@ -85,7 +85,7 @@ tag_changed = signal(
     Data
     ----
     sender
-        The Cell instance.
+        The Cell or Grid instance that owns tha Tags.
     grid
         The Grid instance.
     before

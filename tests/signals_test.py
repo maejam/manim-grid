@@ -254,6 +254,31 @@ def test_tag_changed_bulk_setdefault(simple_grid, signal_monitor):
         assert simple_grid.tags[0, 1] == {"one": 0}
 
 
+def test_gtags_signal(simple_grid, signal_monitor):
+    with signal_monitor("tag_changed") as monitor:
+        simple_grid.gtags.foo = "bar"  # 1
+        simple_grid.gtags.update(foo="baz", qux=42)  # 2
+        del simple_grid.gtags.foo  # 1
+        monitor.assert_received(4)
+        event = next(monitor)
+        assert event.sender is simple_grid
+        assert event.grid is simple_grid
+        assert event.value == "bar"
+        event = next(monitor)
+        assert event.sender is simple_grid
+        assert event.grid is simple_grid
+        assert event.value == "baz"
+        event = next(monitor)
+        assert event.sender is simple_grid
+        assert event.grid is simple_grid
+        assert event.value == 42
+        event = next(monitor)
+        assert event.sender is simple_grid
+        assert event.grid is simple_grid
+        assert event.value is DELETED
+        monitor.assert_no_others()
+
+
 # ----------------------------------------------------------------------
 # row_insertion
 # ----------------------------------------------------------------------

@@ -53,3 +53,11 @@ class Tagging(Scene):
         #  ['Tags(foo=42)' "Tags(foo='baz')"]]
         print(type(grid.tags))
         # <class 'manim_grid.proxies.tags_proxy.TagsProxy'>
+
+        # A Tags instance is also attached to the grid itself and is accessible
+        # through the `grid.gtags` attribute (g for grid or global)
+        # Just like Tags instances attached to Cells, it supports dot notation as well
+        # as key indexing
+        grid.gtags.foo = "bar"
+        print(grid.gtags["foo"])
+        # 'bar'

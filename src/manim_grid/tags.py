@@ -17,7 +17,7 @@ from manim_grid.helpers import _UNSET
 from manim_grid.proxies.base import MISSING
 
 if TYPE_CHECKING:
-    from manim_grid.grid import Cell
+    from manim_grid.grid import Cell, Grid
 
 
 class _DeletedSentinel:
@@ -36,11 +36,11 @@ class TagsBase(ABC):
     """The base class in a composite-like pattern.
 
     Defines the behavior in common between Tags and TagsList. Those 3 classes make it
-    possible to interact with Tags or TagsList in the same way.
+    possible to interact with Tags or TagsList with a similar interface.
     """
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name in {"data", "cell"}:
+        if name in {"data", "owner"}:
             object.__setattr__(self, name, value)
             return
         for tags in self.iter_tags():
@@ -70,9 +70,9 @@ class Tags(UserDict[str, Any], TagsBase):
     ----------
     dict_
         A dictionnary used to initialize the Tags keys/values.
-    cell
-        The Cell instance this Tags belongs to. Leave at `None`: it will populated by
-        `Grid.__init__` and `TagsProxy.__setitem__`.
+    owner
+        The Grid or Cell instance this Tags belongs to. Leave at `None`: it will be
+        populated by `Grid.__init__` and `Cell.__init__`.
     **kwargs
         Initial key/value pairs tags to store. If both `dict_` and `kwargs` set the same
         key, `kwargs` will take precedence.
@@ -83,10 +83,10 @@ class Tags(UserDict[str, Any], TagsBase):
         dict_: Mapping[str, Any] | None = None,
         /,
         *,
-        cell: "Cell|None" = None,
+        owner: "Cell|Grid|None" = None,
         **kwargs: Any,
     ) -> None:
-        self.cell = cell
+        self.owner = owner
         super().__init__(dict_, **kwargs)
 
     def iter_tags(self) -> Iterator["Tags"]:
@@ -104,13 +104,15 @@ class Tags(UserDict[str, Any], TagsBase):
 
     def __setitem__(self, key: str, value: Any) -> None:
         """Send signal when setting tags."""
+        from manim_grid.grid import Cell
+
         self._validate_key(key)
         before = dict(self)
         super().__setitem__(key, value)
-        assert self.cell is not None
+        assert self.owner is not None
         signal("tag_changed").send(
-            self.cell,
-            grid=self.cell._grid,
+            self.owner,
+            grid=self.owner._grid if isinstance(self.owner, Cell) else self.owner,
             before=before,
             after=dict(self),
             key=key,
@@ -119,12 +121,14 @@ class Tags(UserDict[str, Any], TagsBase):
 
     def __delitem__(self, key: str) -> None:
         """Send signal when deleting tags."""
+        from manim_grid.grid import Cell
+
         before = dict(self)
         super().__delitem__(key)
-        assert self.cell is not None
+        assert self.owner is not None
         signal("tag_changed").send(
-            self.cell,
-            grid=self.cell._grid,
+            self.owner,
+            grid=self.owner._grid if isinstance(self.owner, Cell) else self.owner,
             before=before,
             after=dict(self),
             key=key,
@@ -151,7 +155,7 @@ class TagsList(list[Tags], TagsBase):
 
     This class partly inherits its behavior from list. As such, the list methods are
     available to manipulate its elements with one exception: `pop`. This is because
-    to be able to interact with TagsList as if it were a single Tags , this method also
+    to be able to interact with TagsList as if it were a single Tags , this class also
     defines the dict methods and forwards them to Tags. Because `pop` is both a list
     and a dict method, the choice was made to keep the interface consistent with Tags
     and keep the dict method.
@@ -206,7 +210,6 @@ class TagsList(list[Tags], TagsBase):
 
         results = []
         for tags in self.iter_tags():
-            # tags.popitem() is not FIFO
             results.append(tags.popitem())
         return results
 

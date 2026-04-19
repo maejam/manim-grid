@@ -50,6 +50,7 @@ class Cell:
         A :class:`proxy.tags_proxy.Tags` instance for user-defined metadata. The core
         library does not interpret this data; it is merely attached to the cell as a
         user convenience.
+
     """
 
     _grid: "Grid" = field(repr=False)
@@ -62,7 +63,7 @@ class Cell:
 
     def __post_init__(self) -> None:
         self._grid.add(self.rect.set_opacity(0), self.old, self.mob)
-        self.tags = Tags(cell=self)
+        self.tags = Tags(owner=self)
         self.alignment = m.ORIGIN
 
     def insert_mob(
@@ -161,6 +162,8 @@ class Grid(m.Group):
         A proxy giving access to user defined key/value tags. Allows attaching
         metadata to cells. See :class:`manim_grid.proxies.tags_proxy.TagsProxy` for
         detailed instructions.
+    gtags
+        The `Tags` instance attached to the grid itself.
 
     """
 
@@ -202,6 +205,7 @@ class Grid(m.Group):
         self.mobs = MobsProxy(self, margin=self._margin)
         self.olds = OldsProxy(self)
         self.tags = TagsProxy(self)
+        self.gtags = Tags(owner=self)
 
         if num_visible_rows is not None or num_visible_cols is not None:
             self._stencil = self._create_stencil()
@@ -1051,7 +1055,7 @@ class Grid(m.Group):
             cell.mob = EmptyMobject()
             cell.old = EmptyMobject()
             if shift_tags:
-                cell.tags = Tags(cell=cell)
+                cell.tags = Tags(owner=cell)
 
             self.lattice.insert(idx, rect)
             self.add(rect)
@@ -1273,7 +1277,7 @@ class Grid(m.Group):
             cell.mob = EmptyMobject()
             cell.old = EmptyMobject()
             if shift_tags:
-                cell.tags = Tags(cell=cell)
+                cell.tags = Tags(owner=cell)
 
             self.lattice.insert(idx, rect)
             self.add(rect)

@@ -281,6 +281,15 @@ def test_normalize_margin_invalid_input(margin):
 
 
 # ----------------------------------------------------------------------
+# Grid - gtags
+# ----------------------------------------------------------------------
+def test_grid_gtags(simple_grid: Grid):
+    assert isinstance(simple_grid.gtags, Tags)
+    simple_grid.gtags.foo = "bar"
+    assert simple_grid.gtags["foo"] == "bar"
+
+
+# ----------------------------------------------------------------------
 # Grid - scroll
 # ----------------------------------------------------------------------
 def test_scrolling_without_a_stencil_raises():
