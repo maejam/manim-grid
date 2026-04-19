@@ -798,7 +798,7 @@ class Grid(m.Group):
         with self.keep_viewport_static():
             self.shift(offset)
 
-        # make sure the stencil is recomputed even with no further animation
+        # make sure the stencil is recomputed even for a static frame
         self.stencil.update()
         return self
 
@@ -833,7 +833,7 @@ class Grid(m.Group):
         )
         return np.array(offset)
 
-    def free_scroll(self, direction: Vector3DLike, munits: float) -> Self:
+    def free_scroll(self, direction: Vector3DLike, munits: float = 1) -> Self:
         """Scroll the grid horizontally and/or vertically in a free way.
 
         Unlike :meth:`scroll`, the cell size does not have to be uniform in the
@@ -871,7 +871,7 @@ class Grid(m.Group):
         with self.keep_viewport_static():
             self.shift(np.array(direction) * -munits)
 
-        # make sure the stencil is recomputed even with no further animation
+        # make sure the stencil is recomputed even for a static frame
         self.stencil.update()
         return self
 
