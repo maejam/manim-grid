@@ -15,7 +15,7 @@ It is born from an attempt to build a better `Code` Mobject, more flexible and e
 - [Tips](#tips)
 - [Internals](#internals)  
   - [Cell](#cell)  
-  - [Proxies (`mobs`, `olds`, `rects`, `tags`)](#proxies)  
+  - [Proxies](#proxies)  
   - [Tags](#tags)
   - [Stencil Viewport and Scrolling](#stencil-viewport-and-scrolling)
   - [Signals](#signals)
@@ -104,16 +104,17 @@ class GettingStarted(Scene):
 ## More Examples  
 
 The following examples can be found in the [examples](examples/) directory. They are meant to serve as documentation/tutorials on each topic:
-1. [Getting Started](examples/01-getting_started.py)
-2. [Buffers and Margins](examples/02-buffers_and_margins.py)
-3. [Labels](examples/03-labels.py)
-4. [Scrolling](examples/04-scrolling.py)
-5. [Tagging](examples/05-tagging.py)
-6. [Masking](examples/06-masking.py)
-7. [Frame](examples/07-frame.py)
-8. [Alternative Constructors](examples/08-alternative_constructors.py)
-9. [Signals](examples/09-signals.py)
-10. [Inserting rows/columns](examples/10-inserting.py)
+ - [Getting Started](examples/getting_started.py)
+ - [Buffers and Margins](examples/buffers_and_margins.py)
+ - [Labels](examples/labels.py)
+ - [Alignment](examples/alignment.py)
+ - [Scrolling](examples/scrolling.py)
+ - [Inserting rows/columns](examples/inserting.py)
+ - [Tagging](examples/tagging.py)
+ - [Masking](examples/masking.py)
+ - [Frame](examples/frame.py)
+ - [Alternative Constructors](examples/alternative_constructors.py)
+ - [Signals](examples/signals.py)
 
 ---  
 
@@ -131,20 +132,23 @@ To understand how to best interact with the Grid and why things go wrong sometim
 ### Cell  
 The **Grid** class creates a two-dimensional layout of **Cell** objects.  
 Each `Cell` holds:  
-- `rect`: a `Rectangle` that defines the visual bounds of the cell.  
 - `mob`: the current `Mobject` contained in the cell (defaults to an `EmptyMobject` placeholder).  
 - `old`: the previous `Mobject` that occupied the cell, useful for transition animations.  
+- `rect`: a `Rectangle` that defines the visual bounds of the cell.  
 - `tags`: a dictionary-like `Tags` instance for arbitrary user-defined metadata.  
+- `alignement`: a manim `Vector3D` object (`UP`, `DOWN`, `UL`...).  
+
 
 ### Proxies  
 The Grid provides access to the underlying NumPy array of cell objects via `grid.cells`. It also defines four proxy objects that give convenient, NumPy-style access to the cell attributes described above. These proxies return as outputs and take in as inputs different types of objects whether you are targeting individual cells or multiple cells at the same time. e.g.: `grid.mobs[0,0]` returns a Mobject, while `grid.mobs[:]` returns a VGroup of all mobjects contained in the grid, in row-major order. The table below summarizes the expected inputs and the returned outputs for each proxy (single cell/bulk):
 
-| Proxy        | Purpose                                    | Readable (`__getitem__`)     | Writeable (`__setitem__`)                 |
-|--------------|--------------------------------------------|------------------------------|-------------------------------------------|
-| `grid.mobs`  | Access or assign Mobject(s) to cell(s).    | ✅ Output: Mobject/VGroup    | ✅ Input: Mobject/Sequence[Mobject]|VGoup |
-| `grid.olds`  | Retrieve the previously stored Mobject(s). | ✅ Output: Mobject/VGroup    | ❌                                        |
-| `grid.rects` | Access the lattice Rectangles.             | ✅ Output: Rectangle/VGroup  | ❌                                        |
-| `grid.tags`  | Store and manipulate metadata in Cells.    | ✅ Output: Tags/TagsList     | ❌                                        |
+| Proxy      | Purpose                                  | Readable (`__getitem__`)         | Writeable (`__setitem__`)                 |
+|------------|------------------------------------------|----------------------------------|-------------------------------------------|
+|`.mobs`     |Access or assign Mobject(s) to cell(s).   |✅ Output: Mobject/VGroup         |✅ Input: Mobject/Sequence[Mobject]|(V)Goup|
+|`.olds`     |Retrieve the previously stored Mobject(s).|✅ Output: Mobject/VGroup         |❌                                         |
+|`.rects`    |Access the lattice Rectangles.            |✅ Output: Rectangle/VGroup       |❌                                         |
+|`.tags`     |Store and manipulate metadata in Cells.   |✅ Output: Tags/TagsList          |❌                                         |
+|`.alignment`|Set the alignment in cell(s).             |✅ Output: Vector3D/list[Vector3D]|✅ Input: Vector3D/Vector3D
 
 
 ### Tags  

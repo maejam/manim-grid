@@ -2,9 +2,10 @@ from manim import *
 
 from manim_grid import Grid
 
+
 class AlignmentExample(Scene):
     def construct(self) -> None:
-        grid = Grid([2]*3, [2]*3)
+        grid = Grid([2] * 3, [2] * 3)
         grid.lattice.set_stroke(opacity=1)
         self.add(grid)
 
@@ -21,7 +22,6 @@ class AlignmentExample(Scene):
         grid.mobs[0, DOWN] = [Text("assigned", font_size=16) for _ in range(3)]
 
         # Previous alignment is remembered if not explicitly set
-        grid.mobs[:, 0] = [Text('remembered', font_size=16) for _ in range(3)]
-
+        grid.mobs[:, 0] = [Text("remembered", font_size=16) for _ in range(3)]
 
         grid.add(grid.mobs[:])
