@@ -1,22 +1,18 @@
 from typing import (
     TYPE_CHECKING,
-    Any,
-    cast,
-    overload,
 )
 
-import numpy as np
+import manim as m
 
 from manim_grid.tags import Tags, TagsList
-from manim_grid.typing import BulkIndex, ScalarIndex
 
 from .base import ReadableProxy
 
 if TYPE_CHECKING:
-    from manim_grid.grid import Cell
+    pass
 
 
-class TagsProxy(ReadableProxy[Tags]):
+class TagsProxy(ReadableProxy[Tags, TagsList]):
     """Proxy that forwards attribute access to the ``tags`` field of each Cell.
 
     It returns a Tags or TagsList object so that the user can request a given tag or
@@ -79,24 +75,8 @@ class TagsProxy(ReadableProxy[Tags]):
     --------
     manim_grid.proxies.mobs_proxy.MobsProxy,
     manim_grid.proxies.olds_proxy.OldsProxy
+
     """
 
     _attr = "tags"
-
-    @overload
-    def __getitem__(self, index: ScalarIndex) -> Tags: ...
-
-    @overload
-    def __getitem__(self, index: BulkIndex) -> TagsList: ...
-
-    def __getitem__(self, index: ScalarIndex | BulkIndex) -> Tags | TagsList:
-        return cast(Tags | TagsList, super().__getitem__(index))
-
-    def _postprocess_get(
-        self, subarray: "Cell | np.ndarray", **_: Any
-    ) -> Tags | TagsList:
-        from manim_grid.grid import Cell
-
-        if isinstance(subarray, Cell):
-            return cast(Tags, getattr(subarray, self._attr))
-        return TagsList(getattr(cell, self._attr) for cell in subarray.flat)
+    _bulk_container: type[list[Tags] | m.VGroup] = TagsList

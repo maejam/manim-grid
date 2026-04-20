@@ -19,6 +19,7 @@ from manim_grid.exceptions import (
 )
 from manim_grid.helpers import TrackedLazyAnimation
 from manim_grid.labels import LabelMapper
+from manim_grid.proxies.alignment_proxy import AlignmentProxy
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
 from manim_grid.proxies.rects_proxy import RectsProxy
@@ -205,6 +206,8 @@ class Grid(m.Group):
         self.mobs = MobsProxy(self, margin=self._margin)
         self.olds = OldsProxy(self)
         self.tags = TagsProxy(self)
+        self.alignment = AlignmentProxy(self)
+
         self.gtags = Tags(owner=self)
 
         if num_visible_rows is not None or num_visible_cols is not None:

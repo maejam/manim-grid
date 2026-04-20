@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from collections.abc import Callable, Generator
 from typing import (
     TYPE_CHECKING,
@@ -6,10 +5,13 @@ from typing import (
     Generic,
     TypeVar,
     cast,
+    overload,
 )
 
+import manim as m
 import numpy as np
 
+from manim_grid.exceptions import GridValueError
 from manim_grid.typing import (
     BulkIndex,
     MaskArrayIndex,
@@ -34,11 +36,11 @@ class _MissingSentinel:
 MISSING = _MissingSentinel()
 
 
-T = TypeVar("T")
-"""The value type held by a given proxy."""
+S = TypeVar("S")
+"""The scalar type the proxy handles (the type of ``_attr`` on ``Cell``)."""
 
 
-class _BaseProxy(Generic[T]):
+class _BaseProxy(Generic[S]):
     """Base class for all proxy objects.
 
     A proxy is a façade that forwards attribute access to the underlying
@@ -56,18 +58,20 @@ class _BaseProxy(Generic[T]):
     ----------
     _attr
         Name of the attribute on :class:`~manim_grid.grid.Cell` that the proxy
-        manipulates (e.g. ``"mob"``, ``"old"``, ``"tags"``, ``"rect``").
+        manipulates (e.g. ``"mob"``, ``"old"``, ``"tags"``, ...).
 
     See Also
     --------
     _ReadableProxy : read-only proxy mixin.
     _WriteableProxy : write-only proxy mixin.
+
     """
 
     _attr: str
 
     def __init__(self, grid: "Grid") -> None:
         self._grid = grid
+        self._scalar_type = type(getattr(self._grid.cells[0, 0], self._attr))
 
     def __str__(self) -> str:
         vec = np.vectorize(
@@ -81,12 +85,12 @@ class _BaseProxy(Generic[T]):
     def __len__(self) -> int:
         return len(self._grid.cells)
 
-    def __iter__(self) -> Generator[T]:
+    def __iter__(self) -> Generator[S]:
         for cell in self._grid.cells.flat:
             yield getattr(cell, self._attr)
 
     def mask(
-        self, *, predicate: Callable[[T], bool] | None = None, **kwargs: Any
+        self, *, predicate: Callable[[S], bool] | None = None, **kwargs: Any
     ) -> MaskArrayIndex:
         """Return a boolean ndarray with the same shape as the Cell matrix.
 
@@ -105,6 +109,7 @@ class _BaseProxy(Generic[T]):
             satisfied for the object to be selected. If an object does not have the
             ``key`` attribute or if its value does not correspond to the provided
             ``value``, it will not be selected.
+
         """
         values = np.vectorize(lambda cell: getattr(cell, self._attr), otypes=[object])(
             self._grid.cells
@@ -115,7 +120,7 @@ class _BaseProxy(Generic[T]):
                 "You must provide a predicate or at least one keyword filter."
             )
 
-        def combine(obj: T) -> bool:
+        def combine(obj: S) -> bool:
             selected = True
             if predicate is not None:
                 selected = selected and predicate(obj)
@@ -126,27 +131,34 @@ class _BaseProxy(Generic[T]):
         return cast(MaskArrayIndex, np.vectorize(combine, otypes=[bool])(values))
 
 
-class ReadableProxy(_BaseProxy[T]):
+BO = TypeVar("BO")
+"""The Bulk Output type the Readable proxy returns."""
+
+
+class ReadableProxy(_BaseProxy[S], Generic[S, BO]):
     """Mixin that implements read-only indexing for a proxy.
 
-    Sub-classes inherit and can extend ``__getitem__`` and the default implementation of
-    ``_preprocess_get``; they should also implement ``_postprocess_get``.
-    This base implementation is delibaretly broadly typed to allow for maximum
-    flexibility in subcalsses where a stricter typing can be enforced.
-
-    Parameters
+    Attributes
     ----------
-    grid
-        Parent grid that owns the underlying ``cells`` matrix.
-    attr
-        Name of the attribute on ``Cell`` that should be read.
+    _bulk_container
+        The type of the container returned when indexing in bulk
+        (e.g. ``list[S]``, ``VGroup``...). Used to instantiate the return value.
 
     See Also
     --------
     _WriteableProxy : counterpart providing ``__setitem__``.
+
     """
 
-    def __getitem__(self, index: Any) -> Any:
+    _bulk_container: type[list[S] | m.VGroup]
+
+    @overload
+    def __getitem__(self, index: ScalarIndex) -> S: ...
+
+    @overload
+    def __getitem__(self, index: BulkIndex) -> BO: ...
+
+    def __getitem__(self, index: ScalarIndex | BulkIndex) -> S | BO:
         """Retrieve the attribute value(s) for *index*.
 
         This method performs three steps:
@@ -161,13 +173,14 @@ class ReadableProxy(_BaseProxy[T]):
         ----------
         index
             It may be an index specification understood by :class:`LabelMapper` or a
-            custom index type.
+            custom index type (e.g. including alignment).
 
         Returns
         -------
-        Any
+        S | BO
             The return type depends on each concrete proxy and on whether *index*
             resolves to a scalar value or a bulk selection.
+
         """
         idx, kwargs = self._preprocess_get(index)
         np_index = self._grid._label_mapper.map_index(idx)
@@ -176,13 +189,13 @@ class ReadableProxy(_BaseProxy[T]):
         return self._postprocess_get(subarray, **kwargs)
 
     def _preprocess_get(
-        self, index: Any
+        self, index: ScalarIndex | BulkIndex
     ) -> tuple[ScalarIndex | BulkIndex, dict[str, Any]]:
         """Validate and transform *index* before it reaches the label mapper.
 
         The default implementation simply returns ``(index, {})`` after asserting that
-        the index conforms to the type expected by the LabelMapper (i.e. any custom
-        index format must be removed).
+        the index conforms to the type expected by the LabelMapper. It is the concrete
+        proxy responsibility to make sure the index is cleaned-up if needed.
 
         Parameters
         ----------
@@ -201,12 +214,14 @@ class ReadableProxy(_BaseProxy[T]):
             If ``index`` is neither a scalar nor a bulk index according to
             :func:`manim_grid.typing.is_scalar_index` /
             :func:`manim_grid.typing.is_bulk_index`.
+
         """
-        assert is_scalar_index(index) or is_bulk_index(index)
+        assert is_scalar_index(index) or is_bulk_index(index), (
+            "The provided index is not valid."
+        )
         return index, {}
 
-    @abstractmethod
-    def _postprocess_get(self, subarray: "Cell | np.ndarray", **kwargs: Any) -> Any:
+    def _postprocess_get(self, subarray: "Cell | np.ndarray", **kwargs: Any) -> S | BO:
         """Convert the raw ``subarray`` into the expected return type.
 
         Parameters
@@ -214,49 +229,54 @@ class ReadableProxy(_BaseProxy[T]):
         subarray
             Result of the numpy selector applied to ``self._grid.cells``.
             It may be a ``Cell`` or an ``ndarray`` of ``Cell`` objects.
-
         **kwargs
             Keyword arguments forwarded from ``_preprocess_get``.
 
         Returns
         -------
-        Any
+        S | B
             Depending on the concrete proxy and the indexed selection contained in
             ``subarray`` (scalar or bulk).
+
         """
-        ...
+        from manim_grid.grid import Cell
+
+        if isinstance(subarray, Cell):
+            return cast(S, getattr(subarray, self._attr))
+
+        return cast(
+            BO,
+            self._bulk_container(getattr(cell, self._attr) for cell in subarray.flat),
+        )
 
 
-class WriteableProxy(_BaseProxy[T]):
+BI = TypeVar("BI")
+"""The Bulk Input type(s) the Writeable proxy accepts."""
+
+
+class WriteableProxy(_BaseProxy[S], Generic[S, BI]):
     """Mixin that implements write-only indexing for a proxy.
-
-    Sub-classes must implement the abstract method ``_postprocess_set`` which receives
-    the selected ``Cell`` object (or an ``ndarray`` of them) and the user supplied
-    value(s), and they may override ``_preprocess_set`` to customize the handling of
-    custom index forms.
-    This base implementation is delibaretly broadly typed to allow for maximum
-    flexibility in subcalsses where a stricter typing can be enforced.
-
-    Parameters
-    ----------
-    grid
-        Parent grid that owns the underlying ``cells`` matrix.
-    attr
-        Name of the attribute on ``Cell`` that should be written.
 
     See Also
     --------
     _ReadableProxy : read-only counterpart.
+
     """
 
-    def __setitem__(self, index: Any, value: Any) -> None:
+    @overload
+    def __setitem__(self, index: ScalarIndex, value: S) -> None: ...
+
+    @overload
+    def __setitem__(self, index: BulkIndex, value: BI) -> None: ...
+
+    def __setitem__(self, index: ScalarIndex | BulkIndex, value: S | BI) -> None:
         """Assign *value* to the cell(s) addressed by *index*.
 
         This method mirrors the workflow of ``__getitem__`` in :class:`_ReadableProxy`.
 
-        1. ``_preprocess_set`` returns a cleaned index, a possibly transformed ``value``
+        1. ``_preprocess_set`` returns a clean index, a possibly transformed ``value``
            and a dictionary of extra keyword arguments.
-        2. The cleaned index is turned into a numpy selector.
+        2. The clean index is turned into a numpy selector.
         3. ``_postprocess_set`` performs the actual mutation.
 
         Parameters
@@ -275,15 +295,15 @@ class WriteableProxy(_BaseProxy[T]):
 
     def _preprocess_set(
         self,
-        index: Any,
-        value: Any,
-    ) -> tuple[ScalarIndex | BulkIndex, Any, dict[str, Any]]:
+        index: ScalarIndex | BulkIndex,
+        value: S | BI,
+    ) -> tuple[ScalarIndex | BulkIndex, S | BI, dict[str, Any]]:
         """Normalize *index* and *value* before they reach the grid.
 
         The default implementation simply validates that *index* is a scalar or bulk
         index and returns ``(index, value, {})``. Concrete proxies can extend this
         method to extract additional information (e.g. an alignment vector in
-        MobsProxy).
+        MobsProxy) or transform the passed value.
 
         Parameters
         ----------
@@ -302,18 +322,25 @@ class WriteableProxy(_BaseProxy[T]):
         ------
         AssertionError
             If ``index`` is not a recognised scalar or bulk index.
+
         """
-        assert is_scalar_index(index) or is_bulk_index(index)
+        assert is_scalar_index(index) or is_bulk_index(index), (
+            "The provided index is not valid."
+        )
+
         return index, value, {}
 
-    @abstractmethod
     def _postprocess_set(
         self,
         subarray: "Cell | np.ndarray",
-        value: Any,
+        value: S | BI,
         **kwargs: Any,
     ) -> None:
         """Perform the actual mutation of the selected cell(s).
+
+        This default implementation simply sets `_attr` to value even in the bulk case
+        (the same value is assigned to all selected Cells). Override or extend for more
+        complex logic.
 
         Parameters
         ----------
@@ -323,5 +350,26 @@ class WriteableProxy(_BaseProxy[T]):
             Value(s) to store in the cell(s).
         **kwargs
             Additional context supplied by ``_preprocess_set``.
+
         """
-        ...
+        from manim_grid.grid import Cell
+
+        # scalar assignment
+        if isinstance(subarray, Cell):
+            if not isinstance(value, self._scalar_type):
+                raise GridValueError(
+                    f"Only a single {self._scalar_type.__name__} can be assigned to a "
+                    "single Cell."
+                )
+            setattr(subarray, self._attr, value)
+            return
+
+        # bulk assignment with scalar value
+        if isinstance(value, self._scalar_type):
+            for cell in subarray.flat:
+                setattr(cell, self._attr, value)
+        else:
+            raise GridValueError(
+                f"Bulk assignment for {self._attr} expects a single value that "
+                "will be assigned to all selected Cells."
+            )

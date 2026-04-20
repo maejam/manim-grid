@@ -167,7 +167,8 @@ def test_error_when_assigning_non_mobject(simple_grid):
 
 def test_error_when_bulk_assignment_with_scalar_value(simple_grid):
     with pytest.raises(
-        GridValueError, match="Bulk assignment requires a sequence of Mobjects."
+        GridValueError,
+        match=r"Bulk assignment requires a sequence or a \(V\)Group of Mobjects.",
     ):
         simple_grid.mobs[:, 0] = m.Square()
 
@@ -227,3 +228,17 @@ def test_tagsproxy_getitem(simple_grid: Grid):
     assert simple_grid.tags[0, :] == [{"baz": 42}, {"baz": 42}, {"baz": 42}]
     assert isinstance(simple_grid.tags[0, :], TagsList)
     assert simple_grid.tags[0, 0] is not simple_grid.tags[0, 1]
+
+
+# ----------------------------------------------------------------------
+# AlignmentProxy
+# ----------------------------------------------------------------------
+def test_alignment_proxy_getitem(simple_grid: Grid):
+    assert np.array_equal(simple_grid.alignment[0, 0], m.ORIGIN)
+    assert isinstance(simple_grid.alignment[0, 0], np.ndarray)
+    simple_grid.alignment[0] = m.UP
+    first_col = simple_grid.alignment[:, 0]
+    assert isinstance(first_col, list)
+    assert np.array_equal(first_col[0], m.UP)
+    assert np.array_equal(first_col[1], m.ORIGIN)
+    assert simple_grid.alignment[0, 0] is simple_grid.alignment[0, 1]

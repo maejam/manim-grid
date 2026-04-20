@@ -1,47 +1,21 @@
-from typing import TYPE_CHECKING, Any, cast, overload
+from typing import TYPE_CHECKING
 
 import manim as m
-import numpy as np
-
-from manim_grid.typing import BulkIndex, ScalarIndex
 
 from .base import ReadableProxy
 
 if TYPE_CHECKING:
-    from manim_grid.grid import Cell
+    pass
 
 
-class OldsProxy(ReadableProxy[m.Mobject]):
+class OldsProxy(ReadableProxy[m.Mobject, m.VGroup]):
     """Read-only proxy that exposes the ``old`` attribute of each cell.
 
     The ``old`` attribute stores the *previous* :class:`manim.Mobject` that was present
     in the cell before the most recent insertion. It is useful for animations that need
     for instance to fade out or transform the former content.
 
-    Parameters
-    ----------
-    grid
-        Owning grid instance.
     """
 
     _attr: str = "old"
-
-    @overload
-    def __getitem__(self, index: ScalarIndex) -> m.Mobject: ...
-
-    @overload
-    def __getitem__(self, index: BulkIndex) -> m.VGroup: ...
-
-    def __getitem__(self, index: ScalarIndex | BulkIndex) -> m.Mobject | m.VGroup:
-        return cast(m.Mobject | m.VGroup, super().__getitem__(index))
-
-    def _postprocess_get(
-        self, subarray: "Cell | np.ndarray", **_: Any
-    ) -> m.Mobject | m.VGroup:
-        """Return a single Mobject in the scalar case or a VGroup of Mobjects."""
-        from manim_grid.grid import Cell
-
-        if isinstance(subarray, Cell):
-            return cast(m.Mobject, getattr(subarray, self._attr))
-
-        return m.VGroup(getattr(cell, self._attr) for cell in subarray.flat)
+    _bulk_container: type[list[m.Mobject] | m.VGroup] = m.VGroup

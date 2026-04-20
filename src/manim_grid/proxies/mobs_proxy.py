@@ -29,7 +29,10 @@ if TYPE_CHECKING:
     from manim_grid.grid import Cell, Grid
 
 
-class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
+class MobsProxy(
+    ReadableProxy[m.Mobject, m.VGroup],
+    WriteableProxy[m.Mobject, Sequence[m.Mobject] | m.Group],
+):
     """Proxy that provides read-write access to the ``mob`` attribute of each cell.
 
     This proxy supports the following calling conventions:
@@ -52,9 +55,11 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
     See Also
     --------
     OldsProxy : read-only proxy exposing the previous ``mob`` value.
+
     """
 
-    _attr: str = "mob"
+    _attr = "mob"
+    _bulk_container: type[list[m.Mobject] | m.VGroup] = m.VGroup
 
     def __init__(
         self,
@@ -65,43 +70,25 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
         self._margin = margin
 
     @overload
-    def __getitem__(self, index: ScalarIndex) -> m.Mobject: ...
-
-    @overload
-    def __getitem__(self, index: BulkIndex) -> m.VGroup: ...
-
-    def __getitem__(
-        self, index: ScalarIndex | BulkIndex
-    ) -> m.Mobject | list[m.Mobject]:
-        return cast(m.Mobject | m.VGroup, super().__getitem__(index))
-
-    def _postprocess_get(
-        self, subarray: "Cell | np.ndarray", **_: Any
-    ) -> m.Mobject | m.VGroup:
-        """Return a single Mobject in the scalar case or a VGroup of Mobjects."""
-        from manim_grid.grid import Cell
-
-        if isinstance(subarray, Cell):
-            return cast(m.Mobject, getattr(subarray, self._attr))
-
-        return m.VGroup(getattr(cell, self._attr) for cell in subarray.flat)
-
-    @overload
     def __setitem__(
         self, index: ScalarIndex | AlignedScalarIndex, value: m.Mobject
     ) -> None: ...
 
     @overload
     def __setitem__(
-        self, index: BulkIndex | AlignedBulkIndex, value: Sequence[m.Mobject] | m.VGroup
+        self, index: BulkIndex | AlignedBulkIndex, value: Sequence[m.Mobject] | m.Group
     ) -> None: ...
 
     def __setitem__(
         self,
         index: ScalarIndex | AlignedScalarIndex | BulkIndex | AlignedBulkIndex,
-        value: m.Mobject | Sequence[m.Mobject] | m.VGroup,
+        value: m.Mobject | Sequence[m.Mobject] | m.Group,
     ) -> None:
-        super().__setitem__(index, value)
+        idx, value, kwargs = self._preprocess_set(index, value)
+        np_index = self._grid._label_mapper.map_index(idx)
+        selector = np.index_exp[np_index]
+        subarray = self._grid.cells[cast(Any, selector)]
+        self._postprocess_set(subarray, value, **kwargs)
         mobs = [value] if isinstance(value, m.Mobject) else value
         signal("mobs_added").send(self._grid, index=index, mobs=mobs)
 
@@ -117,15 +104,13 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
         If *index* is a tuple whose last element satisfies
         :func:`manim_grid.typing.is_vector_3d_like`, that element is interpreted as the
         alignment vector and removed from the index that is passed to the label mapper.
-        When no vector is supplied, ``manim.ORIGIN`` is used.
 
         Parameters
         ----------
         index
             Raw user supplied index. It may or may not include an alignmnet vector.
             The alignment vector can be in the form of a 1D numpy array such as manim's
-            direction constants (``UP``, ``DOWN``...), or a 3-tuple of numbers. Defaults
-            to ``ORIGIN``.
+            direction constants (``UP``, ``DOWN``...), or a 3-tuple of numbers.
         value
             Raw value(s) supplied by the caller.
 
@@ -133,6 +118,7 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
         -------
         tuple
             ``(clean_index, value, {"alignment": alignment_vector})``.
+
         """
         if isinstance(index, tuple) and is_vector_3d_like(index[-1]):
             alignment = np.array(index[-1], dtype=np.float64)
@@ -142,13 +128,15 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
         else:
             alignment = None
             idx = cast(ScalarIndex | BulkIndex, index)
-        assert is_scalar_index(idx) or is_bulk_index(idx)
+        assert is_scalar_index(idx) or is_bulk_index(idx), (
+            "The provided index is not valid."
+        )
         return idx, value, {"alignment": alignment}
 
     def _postprocess_set(
         self,
         subarray: "Cell | np.ndarray",
-        value: m.Mobject | Sequence[m.Mobject],
+        value: m.Mobject | Sequence[m.Mobject] | m.Group,
         alignment: Vector3D = m.ORIGIN,
         **_: Any,
     ) -> None:
@@ -161,8 +149,7 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
         value
             New mobject(s) to store.
         alignment
-            Alignment vector passed to :meth:`Cell.insert_mob`. Defaults to
-            ``manim.ORIGIN`` (centered in the targeted cell(s)).
+            Alignment vector passed to :meth:`Cell.insert_mob`.
         **_
             Placeholder for additional keyword arguments that may be supplied by
             ``_preprocess_set`` (currently only ``alignment``).
@@ -172,6 +159,7 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
         GridValueError
             If ``value`` is not a ``Mobject`` in the scalar case, or if the length of
             ``value`` does not match the number of selected cells in the bulk case.
+
         """
         from manim_grid.grid import Cell
 
@@ -183,8 +171,10 @@ class MobsProxy(ReadableProxy[m.Mobject], WriteableProxy[m.Mobject]):
             subarray.insert_mob(value, alignment, self._margin)
             return
 
-        if not isinstance(value, (Sequence, m.VGroup)):
-            raise GridValueError("Bulk assignment requires a sequence of Mobjects.")
+        if not isinstance(value, (Sequence, m.Group, m.VGroup)):
+            raise GridValueError(
+                "Bulk assignment requires a sequence or a (V)Group of Mobjects."
+            )
         num_cells = int(np.prod(subarray.shape))
         num_vals = len(value)
         if num_cells != num_vals:
