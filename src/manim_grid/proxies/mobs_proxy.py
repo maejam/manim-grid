@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 class MobsProxy(
     ReadableProxy[m.Mobject, m.VGroup],
-    WriteableProxy[m.Mobject, Sequence[m.Mobject] | m.Group],
+    WriteableProxy[m.Mobject, Sequence[m.Mobject] | m.Group | m.VGroup],
 ):
     """Proxy that provides read-write access to the ``mob`` attribute of each cell.
 
@@ -76,13 +76,15 @@ class MobsProxy(
 
     @overload
     def __setitem__(
-        self, index: BulkIndex | AlignedBulkIndex, value: Sequence[m.Mobject] | m.Group
+        self,
+        index: BulkIndex | AlignedBulkIndex,
+        value: Sequence[m.Mobject] | m.Group | m.VGroup,
     ) -> None: ...
 
     def __setitem__(
         self,
         index: ScalarIndex | AlignedScalarIndex | BulkIndex | AlignedBulkIndex,
-        value: m.Mobject | Sequence[m.Mobject] | m.Group,
+        value: m.Mobject | Sequence[m.Mobject] | m.Group | m.VGroup,
     ) -> None:
         idx, value, kwargs = self._preprocess_set(index, value)
         np_index = self._grid._label_mapper.map_index(idx)
@@ -95,7 +97,7 @@ class MobsProxy(
     def _preprocess_set(
         self,
         index: ScalarIndex | AlignedScalarIndex | BulkIndex | AlignedBulkIndex,
-        value: m.Mobject | Sequence[m.Mobject],
+        value: m.Mobject | Sequence[m.Mobject] | m.Group | m.VGroup,
     ) -> tuple[
         ScalarIndex | BulkIndex, m.Mobject | Sequence[m.Mobject], dict[str, Any]
     ]:
@@ -136,7 +138,7 @@ class MobsProxy(
     def _postprocess_set(
         self,
         subarray: "Cell | np.ndarray",
-        value: m.Mobject | Sequence[m.Mobject] | m.Group,
+        value: m.Mobject | Sequence[m.Mobject] | m.Group | m.VGroup,
         alignment: Vector3D = m.ORIGIN,
         **_: Any,
     ) -> None:
