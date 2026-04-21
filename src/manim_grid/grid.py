@@ -501,11 +501,20 @@ class Grid(m.Group):
 
         """
         super().add(*mobjects)
+        for mob in mobjects:
+            signal("mob_added").send(mob, grid=self)
 
         if self._stencil is not None:
             super().add(self.stencil)
         if self._frame is not None:
             super().add(self.frame)
+        return self
+
+    def remove(self, *mobjects: m.Mobject) -> Self:
+        """Remove submobjects."""
+        super().remove(*mobjects)
+        for mob in mobjects:
+            signal("mob_removed").send(mob, grid=self)
         return self
 
     @property

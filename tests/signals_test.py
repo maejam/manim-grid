@@ -68,6 +68,44 @@ def test_mob_inserted_bulk(simple_grid, signal_monitor):
 
 
 # ----------------------------------------------------------------------
+# mob_added
+# ----------------------------------------------------------------------
+def test_mob_added(simple_grid, signal_monitor):
+    with signal_monitor("mob_added") as monitor:
+        d = m.Dot()
+        g = m.Group(m.Mobject())
+        simple_grid.add(d)  # 1
+        simple_grid.add(g)  # 1
+        event = next(monitor)
+        assert event.sender is d
+        assert event.grid is simple_grid
+        event = next(monitor)
+        assert event.sender is g
+        assert event.grid is simple_grid
+        monitor.assert_received(2)
+        monitor.assert_no_others()
+
+
+# ----------------------------------------------------------------------
+# mob_removed
+# ----------------------------------------------------------------------
+def test_mob_removed(simple_grid, signal_monitor):
+    with signal_monitor("mob_removed") as monitor:
+        d = m.Dot()
+        g = m.Group(m.Mobject())
+        simple_grid.remove(d)  # 1
+        simple_grid.remove(g)  # 1
+        event = next(monitor)
+        assert event.sender is d
+        assert event.grid is simple_grid
+        event = next(monitor)
+        assert event.sender is g
+        assert event.grid is simple_grid
+        monitor.assert_received(2)
+        monitor.assert_no_others()
+
+
+# ----------------------------------------------------------------------
 # tag_changed
 # ----------------------------------------------------------------------
 def test_tag_changed_scalar_setattr_delattr(simple_grid, signal_monitor):

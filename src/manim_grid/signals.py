@@ -82,6 +82,59 @@ mob_inserted = signal(
     """,
 )
 
+mob_added = signal(
+    "mob_added",
+    doc="""Emitted when mobjects are added as submobjects to the Grid.
+
+    Data
+    ----
+    sender
+        The mobject that is added as submobject.
+    grid
+        The Grid instance.
+
+    Return Value
+    ------------
+    None
+
+    See Also
+    --------
+    mob_removed
+
+    """,
+)
+
+mob_removed = signal(
+    "mob_removed",
+    doc="""Emitted when mobjects are removed from the Grid submobjects.
+
+    Data
+    ----
+    sender
+        The mobject that is removed from the Grid submobjects.
+    grid
+        The Grid instance.
+
+    Return Value
+    ------------
+    None
+
+    Examples
+    --------
+    >>> # log a warning when a (V)Group is added or removed
+
+    >>> @mob_added.connect
+    >>> @mob_removed.connect
+    >>> def warn_on_group(mob, grid):
+    >>>     if isinstance(mob, (Group, VGroup)):
+    >>>         logger.warning("A Group was added/removed: %s", mob.submobjects)
+
+    See Also
+    --------
+    mob_added
+
+    """,
+)
 tag_changed = signal(
     "tag_changed",
     doc="""Emitted when a tag value is changed or deleted.

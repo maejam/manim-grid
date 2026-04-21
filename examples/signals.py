@@ -14,13 +14,13 @@ The blinker documentation can be found here: https://blinker.readthedocs.io/en/s
 
 from manim import *
 
-from manim_grid import Grid, mob_inserted, mobs_added
+from manim_grid import Grid, mob_inserted, mobs_assigned
 
 
-# Functions can be registered easily
-@mobs_added.connect
-def log_mobs_added(grid, index, mobs):
-    logger.info(f"You just added a {len(mobs)} object(s) to the Grid.")
+# Functions can be registered easily with a decorator
+@mobs_assigned.connect
+def log_mobs_assigned(grid, index, mobs):
+    logger.info(f"You just assigned {len(mobs)} object(s) to the Grid.")
 
 
 class Signals(Scene):
@@ -46,7 +46,7 @@ class Signals(Scene):
     # you loose access to the scene instance (self)
     # Use `@signal_name.connect_via(sender=...)` to provide the sender parameter
     @staticmethod
-    @mobs_added.connect
+    @mobs_assigned.connect
     def add_as_sumobjects(grid, index, mobs):
         grid.add(*grid.mobs[index])
 
