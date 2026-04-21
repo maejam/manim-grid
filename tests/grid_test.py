@@ -139,9 +139,11 @@ def test_labels_convenience_methods():
 @pytest.mark.parametrize(
     ("start", "stop", "step", "num_rows", "expected"),
     [
+        (1, None, 1, 5, [1, 2, 3, 4, 5]),  # all defaults
         (0, 5, 1, 100, [0, 1, 2, 3, 4]),
         (0, None, 1, 5, [0, 1, 2, 3, 4]),
         (0, None, 2, 5, [0, 2, 4, 6, 8]),
+        (4, None, 1, 10, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
         (1, None, -2, 5, [1, -1, -3, -5, -7]),
         (1, -1, 2, 5, []),
         (0, None, 1, 1, [0]),
@@ -158,9 +160,11 @@ def test_row_numbers_convenience_method(start, stop, step, num_rows, expected):
 @pytest.mark.parametrize(
     ("start", "stop", "step", "num_cols", "expected"),
     [
+        (1, None, 1, 5, [1, 2, 3, 4, 5]),  # all defaults
         (0, 5, 1, 100, [0, 1, 2, 3, 4]),
         (0, None, 1, 5, [0, 1, 2, 3, 4]),
         (0, None, 2, 5, [0, 2, 4, 6, 8]),
+        (4, None, 1, 10, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
         (1, None, -2, 5, [1, -1, -3, -5, -7]),
         (1, -1, 2, 5, []),
         (0, None, 1, 1, [0]),
