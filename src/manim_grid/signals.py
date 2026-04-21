@@ -1,11 +1,11 @@
 from blinker import signal
 
-mobs_added = signal(
-    "mobs_added",
-    doc="""Emitted when mobjects are added to the Grid.
+mobs_assigned = signal(
+    "mobs_assigned",
+    doc="""Emitted when mobjects are assigned to the Grid.
 
     This signal is sent when users call `grid.mobs[index] = mob(s)`. Meant to be used
-    to act on all added mobjects in the Grid indiscriminately.
+    to act on all assigned mobjects in the Grid indiscriminately.
 
     Data
     ----
@@ -38,6 +38,8 @@ mobs_added = signal(
     See Also
     --------
     mob_inserted
+    mobs_added
+
     """,
 )
 
@@ -74,7 +76,9 @@ mob_inserted = signal(
 
     See Also
     --------
+    mobs_assigned
     mobs_added
+
     """,
 )
 

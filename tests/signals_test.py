@@ -8,10 +8,10 @@ from manim_grid.tags import DELETED
 
 
 # ----------------------------------------------------------------------
-# mobs_added
+# mobs_assigned
 # ----------------------------------------------------------------------
-def test_mobs_added_scalar(simple_grid, signal_monitor):
-    with signal_monitor("mobs_added") as monitor:
+def test_mobs_assigned_scalar(simple_grid, signal_monitor):
+    with signal_monitor("mobs_assigned") as monitor:
         d = m.Dot()
         simple_grid.mobs[0, 0] = d
         event = next(monitor)
@@ -22,8 +22,8 @@ def test_mobs_added_scalar(simple_grid, signal_monitor):
         monitor.assert_others("mob_inserted", 1)
 
 
-def test_mobs_added_bulk(simple_grid, signal_monitor):
-    with signal_monitor("mobs_added") as monitor:
+def test_mobs_assigned_bulk(simple_grid, signal_monitor):
+    with signal_monitor("mobs_assigned") as monitor:
         d1 = m.Dot()
         d2 = m.Dot()
         d3 = m.Dot()
@@ -49,7 +49,7 @@ def test_mob_inserted_scalar(simple_grid, signal_monitor):
         assert isinstance(event.sender, Cell)
         assert event.grid is simple_grid
         monitor.assert_received(1)
-        monitor.assert_others("mobs_added", 1)
+        monitor.assert_others("mobs_assigned", 1)
 
 
 def test_mob_inserted_bulk(simple_grid, signal_monitor):
@@ -64,7 +64,7 @@ def test_mob_inserted_bulk(simple_grid, signal_monitor):
         assert simple_grid.mobs[0, 0] is d1
         assert isinstance(simple_grid.mobs[1, 0], EmptyMobject)
         monitor.assert_received(3)
-        monitor.assert_others("mobs_added", 1)
+        monitor.assert_others("mobs_assigned", 1)
 
 
 # ----------------------------------------------------------------------
