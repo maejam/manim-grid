@@ -1039,7 +1039,7 @@ class Grid(m.Group):
             "olds": self.olds[-1],
             "rects": self.rects[-1],
         }
-        last_row = m.VDict(d).set_z_index(self.z_index - 1)
+        last_row = m.VDict(d)
 
         attrs_to_shift = ["alignment", "mob", "old", "rect"]
         if shift_tags:
@@ -1084,7 +1084,7 @@ class Grid(m.Group):
                 *self.mobs[rows_to_shift],
                 *self.olds[rows_to_shift],
                 *self.rects[rows_to_shift],
-            ).set_z_index(self.z_index - 1)
+            )
 
         shift_vec = m.DOWN * (height + self._buff[1])
 
@@ -1260,7 +1260,7 @@ class Grid(m.Group):
             "olds": self.olds[:, -1],
             "rects": self.rects[:, -1],
         }
-        last_col = m.VDict(d).set_z_index(self.z_index - 1)
+        last_col = m.VDict(d)
         last_col_rects = self.rects[:, -1]
 
         attrs_to_shift = ["alignment", "mob", "old", "rect"]
@@ -1306,7 +1306,7 @@ class Grid(m.Group):
                 *self.mobs[:, cols_to_shift],
                 *self.olds[:, cols_to_shift],
                 *self.rects[:, cols_to_shift],
-            ).set_z_index(self.z_index - 1)
+            )
 
         shift_vec = m.RIGHT * (width + self._buff[0])
 
