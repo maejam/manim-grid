@@ -27,10 +27,10 @@ class GettingStarted(Scene):
         ]
         grid.add(*grid.mobs[0])
 
-        # Place a square in the top-left cell, centered (default)
+        # Place a square in the top-left cell, centered
         # It replaces the Circle in that cell
         # The Circle is still accessible via grid.olds[0, 0]
-        grid.mobs[0, 0] = Square(side_length=0.5, color=RED)
+        grid.mobs[0, 0, ORIGIN] = Square(side_length=0.5, color=RED)
 
         # Transform the circle into the square.
         self.play(ReplacementTransform(grid.olds[0, 0], grid.mobs[0, 0]))
