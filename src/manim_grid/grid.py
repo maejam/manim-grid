@@ -1,7 +1,7 @@
 from collections.abc import Callable, Generator, Hashable, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
-from functools import partial
+from functools import partial, reduce
 from typing import Any, Literal, Self, cast
 
 import manim as m
@@ -569,44 +569,74 @@ class Grid(m.Group):
 
         """
         if predicate(**kwargs):
-            # take inner rects stroke widths into account (expressed in 1/100 munits)
+            # take viewport and rects stroke widths into account (in 1/100 munits)
             visible_rects = self.rects[
                 : self._num_visible_rows, : self._num_visible_cols
             ]
             vp_stroke = viewport.get_stroke_width() / 100
-            max_top_rects_stroke = (
-                max([rect.get_stroke_width() for rect in self.rects[0]]) / 100
-            )
-            max_bottom_rects_stroke = (
-                max([rect.get_stroke_width() for rect in self.rects[-1]]) / 100
-            )
-            max_left_rects_stroke = (
-                max([rect.get_stroke_width() for rect in self.rects[:, 0]]) / 100
-            )
-            max_right_rects_stroke = (
-                max([rect.get_stroke_width() for rect in self.rects[:, -1]]) / 100
-            )
+            max_top, max_bottom, max_left, max_right = self._get_outer_strokes()
 
-            buff_x = (
-                vp_stroke / 2 + (max_left_rects_stroke + max_right_rects_stroke) / 4
-            )
-            buff_y = (
-                vp_stroke / 2 + (max_top_rects_stroke + max_bottom_rects_stroke) / 4
-            )
+            buff_x = vp_stroke / 2 + (max_left + max_right) / 4
+            buff_y = vp_stroke / 2 + (max_top + max_bottom) / 4
 
-            # NOTE: surround does accept a buff tuple => we use a SurroundingRectangle
-            # and surround it to keep the viewport initial geometry
+            # NOTE: surround does not accept a buff tuple => SurroundingRectangle
             target = m.SurroundingRectangle(
                 m.VGroup(visible_rects), buff=(buff_x, buff_y), stroke_width=0
             )
 
             # readjust position in case top/bottom or left/right unevenness
-            x_offset = (max_left_rects_stroke - max_right_rects_stroke) / 4
-            y_offset = (max_top_rects_stroke - max_bottom_rects_stroke) / 4
+            x_offset = (max_left - max_right) / 4
+            y_offset = (max_top - max_bottom) / 4
             target.shift(m.LEFT * x_offset + m.UP * y_offset)
             viewport.match_points(target)
 
         return cast(m.VMobject, viewport)
+
+    def _get_outer_strokes(
+        self,
+        cells_array: np.ndarray | None = None,
+        attr: str = "rect",
+        func: Callable[[float, float], float] = max,
+    ) -> tuple[float, float, float, float]:
+        """Extract and reduce stroke widths for each side of a group of cell mobjects.
+
+        This method collects the stroke widths of all `Cell.attr` within the given range
+        of Cells and applies a reduction function (defaulting to `max`) to determine a
+        single representative width for the top, bottom, left, and right sides.
+
+        Parameters
+        ----------
+        cells_array
+            A numpy array of cells. Defaults to the full `Grid.cells` array.
+        attr
+            The attribute defining the mobjects to consider (`mob`, `rect`...).
+            Defaults to `rect`.
+        func
+            A binary function that takes two floats and returns a float.
+            Used to reduce the list of stroke widths to a single value per side.
+            Defaults to `max`.
+
+        Return
+        ------
+        tuple[float, float, float, float]
+            A tuple representing the reduced stroke widths in munits in the order:
+            (top, bottom, left, right).
+
+        """
+        if cells_array is None:
+            cells_array = self.cells
+
+        top = [getattr(cell, attr).stroke_width for cell in cells_array[0]]
+        bottom = [getattr(cell, attr).stroke_width for cell in cells_array[-1]]
+        left = [getattr(cell, attr).stroke_width for cell in cells_array[:, 0]]
+        right = [getattr(cell, attr).stroke_width for cell in cells_array[:, -1]]
+
+        return (
+            reduce(func, top) / 100,
+            reduce(func, bottom) / 100,
+            reduce(func, left) / 100,
+            reduce(func, right) / 100,
+        )
 
     @contextmanager
     def update_viewport(
