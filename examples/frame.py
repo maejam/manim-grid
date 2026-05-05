@@ -36,7 +36,7 @@ class Frame(Scene):
         # use a blue circle as the grid frame
         grid.frame = (
             Circle()
-            .set_fill(BLUE, opacity=1)
+            .set_fill(BLUE, opacity=0.6)
             .set_stroke(opacity=0, width=40)
             .surround(grid.viewport)
         )
@@ -50,6 +50,6 @@ class Frame(Scene):
             self.play(grid.lattice.set_z_index(-1).animate.scale(0.5))
 
         # the choice was made to keep the frame margins fixed, like resizing a window
-        # in your OS does not change the size of the title bar. It may not always look
+        # in an OS does not change the height of the title bar. It may not always look
         # good with Circles or Stars, but does with Rectangles.
         self.wait()
