@@ -713,22 +713,18 @@ class Grid(m.Group):
             self._frame = None
 
         else:
-            vp_stroke = self.viewport.get_stroke_width() / 100
             self._frame_vmob = vmobject
-            self._frame_top_margin = (
-                abs(self.viewport.get_y(m.UP) - vmobject.get_y(m.UP)) + vp_stroke / 2
+            self._frame_top_margin = abs(
+                self.viewport.get_y(m.UP) - vmobject.get_y(m.UP)
             )
-            self._frame_bottom_margin = (
-                abs(self.viewport.get_y(m.DOWN) - vmobject.get_y(m.DOWN))
-                + vp_stroke / 2
+            self._frame_bottom_margin = abs(
+                self.viewport.get_y(m.DOWN) - vmobject.get_y(m.DOWN)
             )
-            self._frame_right_margin = (
-                abs(self.viewport.get_x(m.RIGHT) - vmobject.get_x(m.RIGHT))
-                + vp_stroke / 2
+            self._frame_right_margin = abs(
+                self.viewport.get_x(m.RIGHT) - vmobject.get_x(m.RIGHT)
             )
-            self._frame_left_margin = (
-                abs(self.viewport.get_x(m.LEFT) - vmobject.get_x(m.LEFT))
-                + vp_stroke / 2
+            self._frame_left_margin = abs(
+                self.viewport.get_x(m.LEFT) - vmobject.get_x(m.LEFT)
             )
             self._frame = self._make_frame(vmobject)
             self.add(self._frame)
