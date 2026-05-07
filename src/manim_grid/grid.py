@@ -201,6 +201,8 @@ class Grid(m.Group):
 
         self._num_visible_rows = num_visible_rows or num_rows
         self._num_visible_cols = num_visible_cols or num_cols
+        self._first_visible_row = 0
+        self._first_visible_col = 0
 
         self.rects = RectsProxy(self)
         self.mobs = MobsProxy(self, margin=self._margin)
@@ -567,9 +569,12 @@ class Grid(m.Group):
 
         """
         if predicate(**kwargs):
+            to_row = self._first_visible_row + self._num_visible_rows
+            to_col = self._first_visible_col + self._num_visible_cols
+
             # take viewport and rects stroke widths into account (in 1/100 munits)
             visible_rects = self.rects[
-                : self._num_visible_rows, : self._num_visible_cols
+                self._first_visible_row : to_row, self._first_visible_col : to_col
             ]
             vp_stroke = viewport.get_stroke_width() / 100
             max_top, max_bottom, max_left, max_right = self._get_outer_strokes()
@@ -846,16 +851,21 @@ class Grid(m.Group):
                 "Define `num_visible_rows` or `num_visible_cols` or both."
             )
 
-        if direction[0] != 0 and not self.has_uniform_cols:
-            raise GridShapeError(
-                "In order to scroll horizontally, the grid must have "
-                "uniform column widths."
-            )
+        if direction[0] != 0:
+            if not self.has_uniform_cols:
+                raise GridShapeError(
+                    "In order to scroll horizontally, the grid must have "
+                    "uniform column widths."
+                )
+            self._first_visible_col += int(direction[0] * step)
 
-        if direction[1] != 0 and not self.has_uniform_rows:
-            raise GridShapeError(
-                "In order to scroll vertically, the grid must have uniform row heights."
-            )
+        if direction[1] != 0:
+            if not self.has_uniform_rows:
+                raise GridShapeError(
+                    "In order to scroll vertically, the grid must have uniform "
+                    "row heights."
+                )
+            self._first_visible_row -= int(direction[1] * step)
 
         offset = self._compute_scroll_offset(direction, step)
         # viewport and grid.frame should not be shifted
@@ -901,7 +911,9 @@ class Grid(m.Group):
         """Scroll the grid horizontally and/or vertically in a free way.
 
         Unlike :meth:`scroll`, the cell size does not have to be uniform in the
-        direction of the scrolling.
+        direction of the scrolling. The drawback is that this will not update
+        :attr:`_first_visible_row` and :attr:`_first_visible_col`, meaning that updating
+        the viewport later could cause unwanted jumps.
 
         Parameters
         ----------
