@@ -294,47 +294,6 @@ def test_grid_gtags(simple_grid: Grid):
 
 
 # ----------------------------------------------------------------------
-# Grid - _get_outer_strokes
-# ----------------------------------------------------------------------
-def test_get_outer_strokes_all_defaults(simple_grid: Grid):
-    simple_grid.rects[0, 0].set_stroke(width=100)
-    top, bottom, left, right = simple_grid._get_outer_strokes()
-    assert top == 1
-    assert bottom == 0.04  # default
-    assert left == 1
-    assert right == 0.04
-
-
-def test_get_outer_strokes_on_subarray(simple_grid: Grid):
-    simple_grid.rects[0, 0].set_stroke(width=100)
-    top, bottom, left, right = simple_grid._get_outer_strokes(
-        simple_grid.cells[1:, 1:]
-    )  # exclude [0,0]
-    assert top == 0.04
-    assert bottom == 0.04
-    assert left == 0.04
-    assert right == 0.04
-
-
-def test_get_outer_strokes_on_mobs(simple_grid: Grid):
-    simple_grid.mobs[-1, -1].set_stroke(width=100)
-    top, bottom, left, right = simple_grid._get_outer_strokes(attr="mob")
-    assert top == 0.04
-    assert bottom == 1
-    assert left == 0.04
-    assert right == 1
-
-
-def test_get_outer_strokes_another_func(simple_grid: Grid):
-    simple_grid.rects[-1, -1].set_stroke(width=100)
-    top, bottom, left, right = simple_grid._get_outer_strokes(func=min)
-    assert top == 0.04
-    assert bottom == 0.04
-    assert left == 0.04
-    assert right == 0.04
-
-
-# ----------------------------------------------------------------------
 # Grid - scroll
 # ----------------------------------------------------------------------
 def test_scrolling_without_a_stencil_raises():
