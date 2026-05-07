@@ -217,7 +217,7 @@ class ReadableProxy(_BaseProxy[S], Generic[S, BO]):
 
         """
         assert is_scalar_index(index) or is_bulk_index(index), (
-            "The provided index is not valid."
+            f"The provided index is not valid: {index}"
         )
         return index, {}
 
