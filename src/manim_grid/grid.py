@@ -541,7 +541,12 @@ class Grid(m.Group):
     def _create_stencil(self) -> Stencil:
         """Create the stencil to hide cells that should not be visible."""
         viewport = self._compute_viewport(m.Rectangle())
-        return Stencil(clip=viewport, wrapped=self.lattice).set_stroke(opacity=0)
+        return Stencil(
+            # add viewport to wrapped to prevent weird artifacts when scrolling
+            # past the last row/line
+            clip=viewport,
+            wrapped=m.VGroup(self.lattice, viewport),
+        ).set_stroke(opacity=0)
 
     def _compute_viewport(
         self,
