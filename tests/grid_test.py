@@ -34,11 +34,11 @@ def test_cell_insert_mob_updates_old_and_mob(dummy_mob):
     first = dummy_mob.copy()
     second = dummy_mob.copy()
 
-    cell.insert_mob(first, alignment=m.ORIGIN, margin=np.zeros(3))
+    cell.insert_mob(first, align=m.ORIGIN, margin=np.zeros(3))
     assert cell.mob is first
     assert cell.old is default
 
-    cell.insert_mob(second, alignment=m.ORIGIN, margin=np.zeros(3))
+    cell.insert_mob(second, align=m.ORIGIN, margin=np.zeros(3))
     assert cell.mob is second
     assert cell.old is first
 

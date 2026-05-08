@@ -10,7 +10,7 @@ from typing import (
 import manim as m
 import numpy as np
 from blinker import signal
-from manim.typing import Vector3D
+from manim.typing import Vector3DLike
 
 from manim_grid.exceptions import GridValueError
 from manim_grid.typing import (
@@ -23,7 +23,7 @@ from manim_grid.typing import (
     is_vector_3d_like,
 )
 
-from .base import ReadableProxy, WriteableProxy
+from .base import ReadableProxy, WriteableProxy, _DictList
 
 if TYPE_CHECKING:
     from manim_grid.grid import Cell, Grid
@@ -38,12 +38,13 @@ class MobsProxy(
     This proxy supports the following calling conventions:
 
     1. ``grid.mobs[index]`` for scalar or bulk indexing.
-    2. ``grid.mobs[row, col, Vector3D] = mob`` for a scalar assignment. The alignment
-       vector can be omitted and will default to ``manim.ORIGIN``.
+    2. ``grid.mobs[row, col, Vector3DLike] = mob`` for a scalar assignment.
+        The alignment vector can be omitted and will default to the last vector set
+        for that cell (ORIGIN by default).
     3. ``grid.mobs[index, Vector3D] = [mob1, mob2, ...]`` for a bulk assignment.
        The number of values provided must equal the number of Cells selected by *index*.
-       The alignment vector can be omitted and will default to ``manim.ORIGIN``. The
-       same alignment is applied to all assigned mobjects.
+       The alignment vector can be omitted and will default to the last vector set for
+       each cell. If provided, the same alignment is applied to all assigned mobjects.
 
     Parameters
     ----------
@@ -59,7 +60,7 @@ class MobsProxy(
     """
 
     _attr = "mob"
-    _bulk_container: type[list[m.Mobject] | m.VGroup] = m.VGroup
+    _bulk_container: type[list[m.Mobject] | m.VGroup | _DictList] = m.VGroup
 
     def __init__(
         self,
@@ -119,27 +120,27 @@ class MobsProxy(
         Returns
         -------
         tuple
-            ``(clean_index, value, {"alignment": alignment_vector})``.
+            ``(clean_index, value, {"align": alignment_vector})``.
 
         """
         if isinstance(index, tuple) and is_vector_3d_like(index[-1]):
-            alignment = np.array(index[-1], dtype=np.float64)
-            # Unpack index if it resolves to a 1-tuple after removing alignment.
+            align = np.array(index[-1], dtype=np.float64)
+            # Unpack index if it resolves to a 1-tuple after removing align.
             # Necessary to pass assertion below.
             idx = index[:-1][0] if len(index[:-1]) == 1 else index[:-1]
         else:
-            alignment = None
+            align = None
             idx = cast(ScalarIndex | BulkIndex, index)
         assert is_scalar_index(idx) or is_bulk_index(idx), (
-            "The provided index is not valid."
+            f"The provided index is not valid: {index}."
         )
-        return idx, value, {"alignment": alignment}
+        return idx, value, {"align": align}
 
     def _postprocess_set(
         self,
         subarray: "Cell | np.ndarray",
         value: m.Mobject | Sequence[m.Mobject] | m.Group | m.VGroup,
-        alignment: Vector3D = m.ORIGIN,
+        align: Vector3DLike | None = None,
         **_: Any,
     ) -> None:
         """Insert the supplied mobject(s) into the target cell(s).
@@ -150,11 +151,11 @@ class MobsProxy(
             The cell or array of cells to be updated.
         value
             New mobject(s) to store.
-        alignment
+        align
             Alignment vector passed to :meth:`Cell.insert_mob`.
         **_
             Placeholder for additional keyword arguments that may be supplied by
-            ``_preprocess_set`` (currently only ``alignment``).
+            ``_preprocess_set`` (currently only ``align``).
 
         Raises
         ------
@@ -170,7 +171,7 @@ class MobsProxy(
                 raise GridValueError(
                     "Only a single Mobject can be assigned to a single Cell."
                 )
-            subarray.insert_mob(value, alignment, self._margin)
+            subarray.insert_mob(value, align, self._margin)
             return
 
         if not isinstance(value, (Sequence, m.Group, m.VGroup)):
@@ -187,4 +188,4 @@ class MobsProxy(
 
         margin = self._margin
         for cell, mob in zip(subarray.flat, value, strict=True):
-            cell.insert_mob(mob, alignment, margin)
+            cell.insert_mob(mob, align, margin)

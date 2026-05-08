@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 import manim as m
 
-from .base import ReadableProxy
+from .base import ReadableProxy, _DictList
 
 if TYPE_CHECKING:
     pass
@@ -18,4 +18,4 @@ class OldsProxy(ReadableProxy[m.Mobject, m.VGroup]):
     """
 
     _attr: str = "old"
-    _bulk_container: type[list[m.Mobject] | m.VGroup] = m.VGroup
+    _bulk_container: type[list[m.Mobject] | m.VGroup | _DictList] = m.VGroup

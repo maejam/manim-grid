@@ -1,11 +1,6 @@
-from typing import TYPE_CHECKING
-
 import manim as m
 
 from .base import ReadableProxy, _Dict, _DictList
-
-if TYPE_CHECKING:
-    pass
 
 
 class Tags(_Dict):

@@ -2,12 +2,12 @@ from collections.abc import Callable, Generator, Hashable, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Literal, Self, cast
+from typing import Any, ClassVar, Literal, Self, TypedDict, cast
 
 import manim as m
 import numpy as np
 from blinker import signal
-from manim.typing import Vector3D, Vector3DLike
+from manim.typing import Vector3DLike
 from manim_utils import Stencil, get_bounds
 
 from manim_grid.exceptions import (
@@ -19,7 +19,7 @@ from manim_grid.exceptions import (
 )
 from manim_grid.helpers import TrackedLazyAnimation
 from manim_grid.labels import LabelMapper
-from manim_grid.proxies.alignment_proxy import AlignmentProxy
+from manim_grid.proxies.config_proxy import Config, ConfigProxy
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
 from manim_grid.proxies.rects_proxy import RectsProxy
@@ -30,16 +30,25 @@ class EmptyMobject(m.VMobject):
     """Serve as a placeholder mobject in empty cells."""
 
 
+class CellConfig(TypedDict):
+    align: str | Vector3DLike
+    mode: str
+
+
 @dataclass
 class Cell:
     """A single grid cell.
 
     Parameters
     ----------
-    grid
+    _grid
         The Grid object the cell belongs to.
     rect
         The rectangle that defines the cell’s geometric boundary.
+    row_index
+        The row index for that cell.
+    col_index
+        The column index for that cell.
     mob
         The *current* Mobject inside the cell. By default a placeholder
         :class:`EmptyMobject` instance is used so that the attribute always exists.
@@ -53,6 +62,8 @@ class Cell:
 
     """
 
+    default_config: ClassVar[CellConfig] = {"align": m.ORIGIN, "mode": "NONE"}
+
     _grid: "Grid" = field(repr=False)
     rect: m.Rectangle = field(repr=False)
     row_index: int
@@ -64,12 +75,12 @@ class Cell:
     def __post_init__(self) -> None:
         self._grid.add(self.rect.set_opacity(0), self.old, self.mob)
         self.tags = Tags(owner=self)
-        self.alignment = m.ORIGIN
+        self.config = Config(owner=self, **self.default_config)
 
     def insert_mob(
         self,
         mob: m.Mobject,
-        alignment: Vector3D,
+        align: Vector3DLike | None,
         margin: np.ndarray[tuple[int], np.dtype[np.float64]],
     ) -> None:
         """Insert a new mobject in the cell.
@@ -85,19 +96,21 @@ class Cell:
         ----------
         mob
             The new Mobject to place inside the cell.
-        alignment
+        align
             A 3D vector that specifies which edge of ``self.rect`` the object should
-            align to (e.g. ``m.UP``, ``m.DOWN``, ...).
+            align to (e.g. ``m.UP``, ``m.DOWN``, ...). If `None`, the previously set
+            vector for that cell is used.
         margin
             A three-component numpy array (``float64``) that offsets the object *away*
             from the aligned edge.
         """
         self.old = self.mob
         self.mob = mob
-        self.alignment = alignment if alignment is not None else self.alignment
-        self.mob.move_to(self.rect, aligned_edge=self.alignment).shift(
-            -self.alignment * margin
-        )
+        if align is not None:
+            self.config["align"] = align
+
+        alignment = self.config["align"]
+        self.mob.move_to(self.rect, aligned_edge=alignment).shift(-alignment * margin)
         signal("mob_inserted").send(self, grid=self._grid)
 
 
@@ -164,6 +177,8 @@ class Grid(m.Group):
         detailed instructions.
     gtags
         The `Tags` instance attached to the grid itself.
+    config
+        A proxy giving access to the cells configuration dictionary.
 
     """
 
@@ -207,7 +222,7 @@ class Grid(m.Group):
         self.mobs = MobsProxy(self, margin=self._margin)
         self.olds = OldsProxy(self)
         self.tags = TagsProxy(self)
-        self.alignment = AlignmentProxy(self)
+        self.config = ConfigProxy(self)
 
         self.gtags = Tags(owner=self)
 
@@ -1025,7 +1040,7 @@ class Grid(m.Group):
         }
         last_row = m.VDict(d)
 
-        attrs_to_shift = ["alignment", "mob", "old", "rect"]
+        attrs_to_shift = ["config", "mob", "old", "rect"]
         if shift_tags:
             attrs_to_shift.append("tags")
 
@@ -1047,7 +1062,7 @@ class Grid(m.Group):
                 .move_to(cell.rect, aligned_edge=m.UL)
             )
             cell.rect = rect
-            cell.alignment = m.ORIGIN
+            cell.config = Config(owner=cell, **Cell.default_config)
             cell.mob = EmptyMobject()
             cell.old = EmptyMobject()
             if shift_tags:
@@ -1247,7 +1262,7 @@ class Grid(m.Group):
         last_col = m.VDict(d)
         last_col_rects = self.rects[:, -1]
 
-        attrs_to_shift = ["alignment", "mob", "old", "rect"]
+        attrs_to_shift = ["config", "mob", "old", "rect"]
         if shift_tags:
             attrs_to_shift.append("tags")
 
@@ -1269,7 +1284,7 @@ class Grid(m.Group):
                 .move_to(cell.rect, aligned_edge=m.UL)
             )
             cell.rect = rect
-            cell.alignment = m.ORIGIN
+            cell.config = Config(owner=cell, **Cell.default_config)
             cell.mob = EmptyMobject()
             cell.old = EmptyMobject()
             if shift_tags:

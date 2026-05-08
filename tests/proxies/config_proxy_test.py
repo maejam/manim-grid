@@ -1,15 +1,13 @@
 import manim as m
-import numpy as np
 
 from manim_grid import Grid
+from manim_grid.proxies.config_proxy import Config, ConfigList
 
 
-def test_alignment_proxy_getitem(simple_grid: Grid):
-    assert np.array_equal(simple_grid.alignment[0, 0], m.ORIGIN)
-    assert isinstance(simple_grid.alignment[0, 0], np.ndarray)
-    simple_grid.alignment[0] = m.UP
-    first_col = simple_grid.alignment[:, 0]
-    assert isinstance(first_col, list)
-    assert np.array_equal(first_col[0], m.UP)
-    assert np.array_equal(first_col[1], m.ORIGIN)
-    assert simple_grid.alignment[0, 0] is simple_grid.alignment[0, 1]
+def test_configproxy_getitem(simple_grid: Grid):
+    assert simple_grid.config[0, 0] == {"align": m.ORIGIN, "mode": "NONE"}
+    assert isinstance(simple_grid.config[0, 0], Config)
+    simple_grid.config[:].update({"align": m.UP})
+    assert simple_grid.config[0, :] == [{"align": m.UP, "mode": "NONE"}] * 3
+    assert isinstance(simple_grid.config[0, :], ConfigList)
+    assert simple_grid.config[0, 0] is not simple_grid.config[0, 1]

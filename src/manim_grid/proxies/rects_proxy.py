@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 import manim as m
 
-from .base import ReadableProxy
+from .base import ReadableProxy, _DictList
 
 if TYPE_CHECKING:
     pass
@@ -32,4 +32,4 @@ class RectsProxy(ReadableProxy[m.Rectangle, m.VGroup]):
     """
 
     _attr: str = "rect"
-    _bulk_container: type[list[m.Rectangle] | m.VGroup] = m.VGroup
+    _bulk_container: type[list[m.Rectangle] | m.VGroup | _DictList] = m.VGroup
