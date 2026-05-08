@@ -2,14 +2,21 @@ import manim as m
 import pytest
 
 from manim_grid.grid import Cell, Grid
-from manim_grid.tags import MISSING, Tags, TagsList
+from manim_grid.proxies.tags_proxy import Tags, TagsList
+from manim_grid.proxies.base import MISSING
 
 
+# ----------------------------------------------------------------------
+# Setup
+# ----------------------------------------------------------------------
 @pytest.fixture
 def cell(simple_grid: Grid):
     return Cell(simple_grid, m.Rectangle(), 1, 2)
 
 
+# ----------------------------------------------------------------------
+# _Dict / _DictList through TagsProxy
+# ----------------------------------------------------------------------
 def test_tags_str(cell: Cell):
     tags = Tags(foo=1, bar=2, owner=cell)
     assert str(tags) == "Tags(foo=1, bar=2)"

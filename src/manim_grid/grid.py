@@ -23,8 +23,7 @@ from manim_grid.proxies.alignment_proxy import AlignmentProxy
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
 from manim_grid.proxies.rects_proxy import RectsProxy
-from manim_grid.proxies.tags_proxy import TagsProxy
-from manim_grid.tags import Tags
+from manim_grid.proxies.tags_proxy import Tags, TagsProxy
 
 
 class EmptyMobject(m.VMobject):

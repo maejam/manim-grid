@@ -1,15 +1,18 @@
-from typing import (
-    TYPE_CHECKING,
-)
+from typing import TYPE_CHECKING
 
 import manim as m
 
-from manim_grid.tags import Tags, TagsList
-
-from .base import ReadableProxy
+from .base import ReadableProxy, _Dict, _DictList
 
 if TYPE_CHECKING:
     pass
+
+
+class Tags(_Dict):
+    signal_name = "tag_changed"
+
+
+class TagsList(_DictList): ...
 
 
 class TagsProxy(ReadableProxy[Tags, TagsList]):
@@ -79,4 +82,4 @@ class TagsProxy(ReadableProxy[Tags, TagsList]):
     """
 
     _attr = "tags"
-    _bulk_container: type[list[Tags] | m.VGroup] = TagsList
+    _bulk_container: type[list[Tags] | m.VGroup | _DictList] = TagsList
