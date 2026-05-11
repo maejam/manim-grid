@@ -74,6 +74,8 @@ class Cell:
 
     def __post_init__(self) -> None:
         self._grid.add(self.rect.set_opacity(0), self.old, self.mob)
+        self.mob.name = f"Mob(EmptyMobject)[{self.row_index}, {self.col_index}]"
+        self.old.name = f"Old(EmptyMobject)[{self.row_index}, {self.col_index}]"
         self.tags = Tags(owner=self)
         self.config = Config(owner=self, **self.default_config)
 
@@ -105,7 +107,13 @@ class Cell:
             from the aligned edge.
         """
         self.old = self.mob
+        self.old.name = (
+            f"Old({type(self.old).__name__})[{self.row_index}, {self.col_index}]"
+        )
         self.mob = mob
+        self.mob.name = (
+            f"Mob({type(self.mob).__name__})[{self.row_index}, {self.col_index}]"
+        )
         if align is not None:
             self.config["align"] = align
 
@@ -233,9 +241,9 @@ class Grid(m.Group):
         else:
             # some manim methods/classes (e.g. Difference) don't work with VGroup,
             # so we surround the lattice
-            self.viewport = m.SurroundingRectangle(self.lattice, buff=0).set_stroke(
-                opacity=0
-            )
+            self.viewport = m.SurroundingRectangle(
+                self.lattice, name="viewport", buff=0
+            ).set_stroke(opacity=0)
             super().add(self.viewport)
 
     @classmethod
@@ -494,6 +502,7 @@ class Grid(m.Group):
         for i, row_h in enumerate(row_heights):
             for j, col_w in enumerate(col_widths):
                 rect = m.Rectangle(
+                    name=f"Rect[{i}, {j}]",
                     height=row_h,
                     width=col_w,
                 )
@@ -560,6 +569,7 @@ class Grid(m.Group):
             # past the last row/line
             clip=viewport,
             wrapped=m.VGroup(self.lattice, viewport),
+            name="Stencil",
         ).set_stroke(opacity=0)
 
     def _compute_viewport(
@@ -727,7 +737,7 @@ class Grid(m.Group):
         """Build the frame Difference from a vmobject."""
         vp_stroke = self.viewport.get_stroke_width() / 100
         clip = m.SurroundingRectangle(self.viewport, buff=vp_stroke / 2)
-        frame = m.Difference(vmobject, clip).match_style(vmobject)
+        frame = m.Difference(vmobject, clip, name="Frame").match_style(vmobject)
         return frame
 
     @contextmanager

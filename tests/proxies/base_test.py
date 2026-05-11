@@ -39,12 +39,16 @@ def test_str(simple_grid):
     simple_grid.mobs[0, 0] = m.Square()
     simple_grid.mobs[0, 0] = m.Circle()
     assert (
-        str(simple_grid.mobs) == "[['Circle' 'EmptyMobject' 'EmptyMobject']\n "
-        "['EmptyMobject' 'EmptyMobject' 'EmptyMobject']]"
+        str(simple_grid.mobs) == "[['Mob(Circle)[0, 0]' 'Mob(EmptyMobject)[0, 1]' "
+        "'Mob(EmptyMobject)[0, 2]']\n "
+        "['Mob(EmptyMobject)[1, 0]' 'Mob(EmptyMobject)[1, 1]'\n  "
+        "'Mob(EmptyMobject)[1, 2]']]"
     )
     assert (
-        str(simple_grid.olds) == "[['Square' 'EmptyMobject' 'EmptyMobject']\n "
-        "['EmptyMobject' 'EmptyMobject' 'EmptyMobject']]"
+        str(simple_grid.olds) == "[['Old(Square)[0, 0]' 'Old(EmptyMobject)[0, 1]' "
+        "'Old(EmptyMobject)[0, 2]']\n "
+        "['Old(EmptyMobject)[1, 0]' 'Old(EmptyMobject)[1, 1]'\n  "
+        "'Old(EmptyMobject)[1, 2]']]"
     )
 
 
