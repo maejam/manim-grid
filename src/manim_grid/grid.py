@@ -7,7 +7,7 @@ from typing import Any, ClassVar, Literal, Self, TypedDict, cast
 import manim as m
 import numpy as np
 from blinker import signal
-from manim.typing import Vector3DLike
+from manim.typing import Vector3D, Vector3DLike
 from manim_utils import Stencil, get_bounds
 
 from manim_grid.exceptions import (
@@ -19,6 +19,11 @@ from manim_grid.exceptions import (
 )
 from manim_grid.helpers import TrackedLazyAnimation
 from manim_grid.labels import LabelMapper
+from manim_grid.proxies.cells_updater_proxy import (
+    BuiltinModes,
+    CellsUpdaterProxy,
+    CellUpdater,
+)
 from manim_grid.proxies.config_proxy import Config, ConfigProxy
 from manim_grid.proxies.mobs_proxy import MobsProxy
 from manim_grid.proxies.olds_proxy import OldsProxy
@@ -31,8 +36,8 @@ class EmptyMobject(m.VMobject):
 
 
 class CellConfig(TypedDict):
-    align: str | Vector3DLike
-    mode: str
+    align: Vector3DLike
+    mode: BuiltinModes | str
 
 
 @dataclass
@@ -78,12 +83,14 @@ class Cell:
         self.old.name = f"Old(EmptyMobject)[{self.row_index}, {self.col_index}]"
         self.tags = Tags(owner=self)
         self.config = Config(owner=self, **self.default_config)
+        self.updater = CellUpdater(owner=self)
+        self._grid.add(self.updater)
 
     def insert_mob(
         self,
         mob: m.Mobject,
         align: Vector3DLike | None,
-        margin: np.ndarray[tuple[int], np.dtype[np.float64]],
+        margin: np.ndarray[tuple[Literal[3]], np.dtype[np.float64]],
     ) -> None:
         """Insert a new mobject in the cell.
 
@@ -117,9 +124,15 @@ class Cell:
         if align is not None:
             self.config["align"] = align
 
-        alignment = self.config["align"]
-        self.mob.move_to(self.rect, aligned_edge=alignment).shift(-alignment * margin)
+        self.align_mob(self.config["align"], margin)
         signal("mob_inserted").send(self, grid=self._grid)
+
+    def align_mob(
+        self,
+        vector: Vector3D,
+        margin: np.ndarray[tuple[Literal[3]], np.dtype[np.float64]],
+    ) -> None:
+        self.mob.move_to(self.rect, aligned_edge=vector).shift(-vector * margin)
 
 
 class Grid(m.Group):
@@ -231,6 +244,7 @@ class Grid(m.Group):
         self.olds = OldsProxy(self)
         self.tags = TagsProxy(self)
         self.config = ConfigProxy(self)
+        self.update_cells = CellsUpdaterProxy(self)
 
         self.gtags = Tags(owner=self)
 

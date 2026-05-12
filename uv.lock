@@ -379,7 +379,7 @@ dev = [
 [[package]]
 name = "manim-utils"
 version = "0.2.0"
-source = { git = "https://github.com/maejam/manim-utils.git#cccf5d006d511786d9881ca5a9c2bb854dd597b5" }
+source = { git = "https://github.com/maejam/manim-utils.git#29cad55a371fa1dc90c6b93616c8e359e4e69d02" }
 dependencies = [
     { name = "manim" },
     { name = "types-pygments" },

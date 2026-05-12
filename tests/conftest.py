@@ -3,7 +3,7 @@ from typing import Any
 
 import manim as m
 import pytest
-from blinker import ANY, default_namespace, signal
+from blinker import default_namespace, signal
 
 from manim_grid import Grid
 
@@ -128,7 +128,7 @@ class SignalMonitor:
 def signal_monitor():
     def disconnect_all():
         for sig in default_namespace.values():
-            receivers = sig.receivers_for(ANY)
+            receivers = sig.receivers.copy()
             for receiver in receivers:
                 sig.disconnect(receiver)
             assert not sig.receivers
