@@ -1,13 +1,15 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from functools import partial
 from types import TracebackType
-from typing import TYPE_CHECKING, Literal, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast
 
 import manim as m
 from blinker import signal
 from manim_utils import get_bounds
 
 from .base import ReadableProxy, _DictList
+from .config_proxy import Config
 
 if TYPE_CHECKING:
     from manim_grid.grid import Cell, Grid
@@ -38,47 +40,57 @@ def stretch_mobject(sender: str, key: str, grid: "Grid", cell: "Cell") -> None:
         cell.mob.stretch_to_fit_height(h)
 
 
-class CellUpdaterContext:
-    def __init__(self, cell_updater: "CellUpdater") -> None:
-        pass
-
-
 class CellUpdaterBase(ABC):
     @abstractmethod
     def __iter__(self) -> Iterator["CellUpdater"]: ...
 
-    def __call__(self) -> None:
+    def __call__(self, *args: str, **kwargs: str) -> None:
         for cell_updater in self:
-            cell_updater._update(cell_updater)
+            options = cell_updater._merge_config(*args, **kwargs)
+            cell_updater._update(cell_updater, **options)
 
-    def __enter__(self) -> None:
-        for cell_updater in self:
-            cell_updater.add_updater(cell_updater._update)
+    def run(self, **kwargs: Any) -> "_CMDecoWrapper":
+        return _CMDecoWrapper(self, **kwargs)
 
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> bool | None:
+    def _attach_updaters(self, **options: Any) -> None:
         for cell_updater in self:
-            cell_updater.remove_updater(cell_updater._update)
-        return None
+            options_ = cell_updater._merge_config(**options)
+            cell_updater._updater = partial(cell_updater._update, **options_)
+            cell_updater.add_updater(cell_updater._updater)
+
+    def _detach_updaters(self) -> None:
+        for cell_updater in self:
+            if cell_updater._updater is not None:
+                cell_updater.remove_updater(cell_updater._updater)
 
 
 class CellUpdater(CellUpdaterBase, m.Mobject):
     def __init__(self, owner: "Cell") -> None:
         self._owner = owner
+        self._updater: Callable[[m.Mobject], None] | None = None
         super().__init__(name=f"CellUpdater[{owner.row_index}, {owner.col_index}]")
 
     def __iter__(self) -> Iterator["CellUpdater"]:
         yield self
 
-    def _update(self, cell_updater: m.Mobject) -> None:
+    def _merge_config(self, *args: str, **kwargs: Any) -> Config | dict[str, Any]:
+        config = self._owner.config
+        if not args and not kwargs:
+            return config
+        d = (
+            {key: value for key, value in config.items() if key in args}
+            if args
+            else config
+        )
+        d.update(kwargs)
+        return d
+
+    def _update(self, cell_updater: m.Mobject, **options: Any) -> None:
         cell = cast("Cell", cell_updater._owner)
-        for key, value in cell.config.items():
+        for key, value in options.items():
             if key == "align":
                 continue
+            # print("sending", value, key, cell._grid, cell)
             signal("cell_updating").send(value, key=key, grid=cell._grid, cell=cell)
         cell.align_mob(cell.config["align"], cell._grid._margin)
 
@@ -86,11 +98,39 @@ class CellUpdater(CellUpdaterBase, m.Mobject):
 class CellUpdaterList(list[CellUpdater], CellUpdaterBase): ...
 
 
-class CellsUpdaterProxy(ReadableProxy[CellUpdater, CellUpdaterList]):
-    """Proxy that forwards attribute access to the ``config`` field of each Cell.
+class _CMDecoWrapper:
+    def __init__(self, parent: CellUpdaterBase, **options: Any) -> None:
+        self._parent = parent
+        self._options = options
 
-    It returns a Config or ConfigList object so that the user can request a given config
-    option or chain ``.update`` ``setdefault``... after an indexing operation.
+    def __enter__(self) -> None:
+        self._parent._attach_updaters(**self._options)
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: TracebackType | None = None,
+    ) -> Literal[False]:
+        self._parent._detach_updaters()
+        return False
+
+    def __call__(self, func: Callable[..., Any]) -> Callable[[Callable[..., Any]], Any]:
+        def wrapper(*func_args: Any, **func_kwargs: Any) -> Any:
+            self.__enter__()
+            try:
+                return func(*func_args, **func_kwargs)
+            finally:
+                self.__exit__()
+
+        return wrapper
+
+
+class CellsUpdaterProxy(ReadableProxy[CellUpdater, CellUpdaterList]):
+    """Proxy that forwards attribute access to the ``updater`` field of each Cell.
+
+    It returns a CellUpdater or CellUpdaterList object so that the user can call it
+    directly, use it as a context manager or a decorator through the `run` method.
 
     See Also
     --------
