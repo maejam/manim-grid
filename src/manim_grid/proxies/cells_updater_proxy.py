@@ -8,7 +8,7 @@ import manim as m
 from blinker import signal
 from manim_utils import get_bounds
 
-from .base import ReadableProxy, _DictList
+from .base import ReadableProxy
 from .config_proxy import Config
 
 if TYPE_CHECKING:
@@ -141,4 +141,4 @@ class CellsUpdaterProxy(ReadableProxy[CellUpdater, CellUpdaterList]):
     """
 
     _attr = "updater"
-    _bulk_container: type[list[CellUpdater] | m.VGroup | _DictList] = CellUpdaterList
+    _bulk_container = CellUpdaterList

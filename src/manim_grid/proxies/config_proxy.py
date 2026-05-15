@@ -1,11 +1,8 @@
-import manim as m
+from .base import ReadableProxy
+from .dict_list import _Dict, _DictList
 
-from .base import ReadableProxy, _Dict, _DictList
 
-
-class Config(_Dict):
-    # signal_name = "tag_changed"
-    pass
+class Config(_Dict): ...
 
 
 class ConfigList(_DictList): ...
@@ -26,4 +23,4 @@ class ConfigProxy(ReadableProxy[Config, ConfigList]):
     """
 
     _attr = "config"
-    _bulk_container: type[list[Config] | m.VGroup | _DictList] = ConfigList
+    _bulk_container = ConfigList

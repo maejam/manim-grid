@@ -23,7 +23,7 @@ from manim_grid.typing import (
     is_vector_3d_like,
 )
 
-from .base import ReadableProxy, WriteableProxy, _DictList
+from .base import ReadableProxy, WriteableProxy
 
 if TYPE_CHECKING:
     from manim_grid.grid import Cell, Grid
@@ -60,7 +60,7 @@ class MobsProxy(
     """
 
     _attr = "mob"
-    _bulk_container: type[list[m.Mobject] | m.VGroup | _DictList] = m.VGroup
+    _bulk_container = m.VGroup
 
     def __init__(
         self,

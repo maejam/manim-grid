@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from manim_grid.grid import Cell, EmptyMobject
-from manim_grid.proxies.base import DELETED, MISSING
+from manim_grid.helpers import DELETED, MISSING
 
 
 # ----------------------------------------------------------------------

@@ -1,6 +1,5 @@
-import manim as m
-
-from .base import ReadableProxy, _Dict, _DictList
+from .base import ReadableProxy
+from .dict_list import _Dict, _DictList
 
 
 class Tags(_Dict):
@@ -77,4 +76,4 @@ class TagsProxy(ReadableProxy[Tags, TagsList]):
     """
 
     _attr = "tags"
-    _bulk_container: type[list[Tags] | m.VGroup | _DictList] = TagsList
+    _bulk_container = TagsList
