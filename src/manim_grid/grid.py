@@ -2,7 +2,7 @@ from collections.abc import Callable, Generator, Hashable, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, ClassVar, Literal, Self, TypedDict, cast
+from typing import Any, ClassVar, Literal, Self, cast
 
 import manim as m
 import numpy as np
@@ -20,7 +20,6 @@ from manim_grid.exceptions import (
 from manim_grid.helpers import TrackedLazyAnimation
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.cells_updater_proxy import (
-    BuiltinModes,
     CellsUpdaterProxy,
     CellUpdater,
 )
@@ -33,11 +32,6 @@ from manim_grid.proxies.tags_proxy import Tags, TagsProxy
 
 class EmptyMobject(m.VMobject):
     """Serve as a placeholder mobject in empty cells."""
-
-
-class CellConfig(TypedDict):
-    align: Vector3DLike
-    mode: BuiltinModes | str
 
 
 @dataclass
@@ -67,7 +61,7 @@ class Cell:
 
     """
 
-    default_config: ClassVar[CellConfig] = {"align": m.ORIGIN, "mode": "NONE"}
+    default_config: ClassVar[dict[str, Any]] = {"align": m.ORIGIN, "mode": "NONE"}
 
     _grid: "Grid" = field(repr=False)
     rect: m.Rectangle = field(repr=False)
@@ -89,7 +83,7 @@ class Cell:
     def insert_mob(
         self,
         mob: m.Mobject,
-        align: Vector3DLike | None,
+        align: Vector3D | None,
         margin: np.ndarray[tuple[Literal[3]], np.dtype[np.float64]],
     ) -> None:
         """Insert a new mobject in the cell.

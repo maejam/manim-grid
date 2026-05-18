@@ -1,34 +1,30 @@
+from enum import Enum
+
 from manim_utils import LazyAnimation, TrackedAnimationMixin
 
 
 # constants and sentinels
-class _Unset:
-    __slots__ = ()
+class _Unset(Enum):
+    UNSET = "<UNSET>"
 
 
-UNSET = _Unset()
+UNSET = _Unset.UNSET
 """Sentinel for default parameters where everything else is valid."""
 
 
-class _MissingSentinel:
-    __slots__ = ()
-
-    def __repr__(self) -> str:
-        return "<MISSING>"
+class _Missing(Enum):
+    MISSING = "<MISSING>"
 
 
-MISSING = _MissingSentinel()
+MISSING = _Missing.MISSING
 """Sentinel used to signal a missing object."""
 
 
-class _DeletedSentinel:
-    __slots__ = ()
-
-    def __repr__(self) -> str:
-        return "<DELETED>"
+class _Deleted:
+    DELETED = "<DELETED>"
 
 
-DELETED = _DeletedSentinel()
+DELETED = _Deleted.DELETED
 """Sentinel used to signal that an item was deleted."""
 
 

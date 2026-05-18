@@ -1,12 +1,14 @@
+from typing import Any
+
 from .base import ReadableProxy
-from .dict_list import _Dict, _DictList
+from .map_list import Map, MapList
 
 
-class Tags(_Dict):
+class Tags(Map[Any, Any]):
     signal_name = "tag_changed"
 
 
-class TagsList(_DictList): ...
+class TagsList(MapList[Any, Any]): ...
 
 
 class TagsProxy(ReadableProxy[Tags, TagsList]):

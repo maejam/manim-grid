@@ -3,7 +3,6 @@ from blinker import signal as signal
 from .grid import Grid as Grid
 from .helpers import DELETED as DELETED
 from .helpers import MISSING as MISSING
-from .proxies.tags_proxy import Tags as Tags
 from .signals import column_insertion_displayed as column_insertion_displayed
 from .signals import column_insertion_processed as column_insertion_processed
 from .signals import mob_added as mob_added

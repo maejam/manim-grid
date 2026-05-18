@@ -1,11 +1,42 @@
+from dataclasses import dataclass, replace
+from typing import Any, Literal, overload
+
+from manim.typing import Vector3D
+
+from manim_grid.helpers import MISSING, _Missing
+
 from .base import ReadableProxy
-from .dict_list import _Dict, _DictList
+from .map_list import Map, MapList
 
 
-class Config(_Dict): ...
+@dataclass
+class ConfigItem:
+    value: Any
+    priority: int = 0
 
 
-class ConfigList(_DictList): ...
+class Config(Map[ConfigItem, Any]):
+    def wrap(self, value: Any, existing: ConfigItem | _Missing = MISSING) -> ConfigItem:
+        if existing is not MISSING:
+            return replace(existing, value=value)
+        return ConfigItem(value=value)
+
+    def unwrap(self, internal: ConfigItem | _Missing) -> Any | _Missing:
+        if isinstance(internal, _Missing):
+            return internal
+        return internal.value
+
+    @overload
+    def __getitem__(self, key: Literal["align"]) -> Vector3D: ...
+
+    @overload
+    def __getitem__(self, key: str) -> Any | _Missing: ...
+
+    def __getitem__(self, key: str) -> Any | _Missing:
+        return super().__getitem__(key)
+
+
+class ConfigList(MapList[ConfigItem, Any]): ...
 
 
 class ConfigProxy(ReadableProxy[Config, ConfigList]):

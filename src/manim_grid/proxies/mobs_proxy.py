@@ -10,7 +10,7 @@ from typing import (
 import manim as m
 import numpy as np
 from blinker import signal
-from manim.typing import Vector3DLike
+from manim.typing import Vector3D
 
 from manim_grid.exceptions import GridValueError
 from manim_grid.typing import (
@@ -38,7 +38,7 @@ class MobsProxy(
     This proxy supports the following calling conventions:
 
     1. ``grid.mobs[index]`` for scalar or bulk indexing.
-    2. ``grid.mobs[row, col, Vector3DLike] = mob`` for a scalar assignment.
+    2. ``grid.mobs[row, col, Vector3D] = mob`` for a scalar assignment.
         The alignment vector can be omitted and will default to the last vector set
         for that cell (ORIGIN by default).
     3. ``grid.mobs[index, Vector3D] = [mob1, mob2, ...]`` for a bulk assignment.
@@ -140,7 +140,7 @@ class MobsProxy(
         self,
         subarray: "Cell | np.ndarray",
         value: m.Mobject | Sequence[m.Mobject] | m.Group | m.VGroup,
-        align: Vector3DLike | None = None,
+        align: Vector3D | None = None,
         **_: Any,
     ) -> None:
         """Insert the supplied mobject(s) into the target cell(s).
