@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from collections.abc import (
     Iterator,
     MutableMapping,
+    Sequence,
 )
 from typing import (
     TYPE_CHECKING,
@@ -15,6 +16,7 @@ from typing import (
 from blinker import signal
 
 from manim_grid.helpers import DELETED, MISSING, _Missing
+from manim_grid.typing import is_non_string_sequence
 
 if TYPE_CHECKING:
     from manim_grid.grid import Cell, Grid
@@ -30,6 +32,10 @@ class MapBase(ABC, Generic[IT, UT]):
     dictionary or a list of dictionaries with a similar interface.
     Used in dictionary based proxies such as TagsProxy or ConfigProxy.
     """
+
+    @abstractmethod
+    def itermaps(self) -> Iterator["Map[IT, UT]"]:
+        pass
 
     @abstractmethod
     def __getitem__(self, key: str) -> Any:
@@ -106,6 +112,9 @@ class Map(MapBase[IT, UT], MutableMapping[str, UT | _Missing]):
         self._owner = owner
         self._data: dict[str, IT] = {k: self.wrap(v) for k, v in data.items()}
 
+    def itermaps(self) -> Iterator["Map[IT, UT]"]:
+        yield self
+
     def __getitem__(self, key: str) -> UT | _Missing:
         value = self._data.get(key, MISSING)
         if value is MISSING:
@@ -143,7 +152,7 @@ class Map(MapBase[IT, UT], MutableMapping[str, UT | _Missing]):
         return f"{type(self).__name__}({', '.join(parts)})"
 
 
-class MapList(MapBase[IT, UT], MutableMapping[str, list[UT | _Missing]]):
+class MapList(MapBase[IT, UT], MutableMapping[str, Sequence[UT | _Missing]]):
     """A list of Map with the same interface as a single Map.
 
     Note
@@ -158,18 +167,21 @@ class MapList(MapBase[IT, UT], MutableMapping[str, list[UT | _Missing]]):
     def __init__(self, *maps: Map[IT, UT]) -> None:
         self._maps = list(maps)
 
+    def itermaps(self) -> Iterator["Map[IT, UT]"]:
+        yield from self._maps
+
     def __getitem__(self, key: str) -> list[UT | _Missing]:
         """Return a list of values (one from each Map)."""
         if all(key not in map_._data for map_ in self._maps):
             raise KeyError(key)
         return [map_.unwrap(map_._data.get(key, MISSING)) for map_ in self._maps]
 
-    def __setitem__(self, key: str, value: list[UT | _Missing]) -> None:
-        """Set values from a list (one for each Map)."""
+    def __setitem__(self, key: str, value: Sequence[UT | _Missing]) -> None:
+        """Set values from a Sequence (one for each Map)."""
         self._validate_key(key)
 
-        if not isinstance(value, list):
-            raise TypeError(f"Expected a list. Got {value!r} ({type(value)})")
+        if not is_non_string_sequence(value):
+            raise TypeError(f"Expected a Sequence. Got {value!r} ({type(value)})")
         if len(value) != len(self._maps):
             raise ValueError(
                 f"Expected {len(self._maps)} values for key '{key}', got {len(value)}"
@@ -201,29 +213,31 @@ class MapList(MapBase[IT, UT], MutableMapping[str, list[UT | _Missing]]):
         return len({key for map_ in self._maps for key in map_})
 
     def __str__(self) -> str:
-        return f"{list(self._maps)}"
+        return f"{self._maps}"
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({list(self._maps)})"
+        return f"{type(self).__name__}({self._maps})"
 
-    def setdefault(self, key: str, default: list[UT | _Missing]) -> list[UT | _Missing]:  # pyright: ignore[reportIncompatibleMethodOverride]
-        """Set key to default list if missing in any Map, else return existing values.
+    def setdefault(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, key: str, default: Sequence[UT | _Missing]
+    ) -> list[UT | _Missing]:
+        """Set `key` from `default` Sequence in Maps where it is missing.
 
         Parameters
         ----------
-        key : str
-            The key to set/get
-        default : list[UT | _Missing]
-            A list of values (one for each Map in the collection)
+        key
+            The key to set.
+        default
+            A list of values (one for each Map in the MapList).
 
         Returns
         -------
-        list[UT | _Missing]
+        Sequence[UT | _Missing]
             The list of values for this key across all Maps
         """
-        if not isinstance(default, list):
+        if not is_non_string_sequence(default):
             raise TypeError(
-                f"Expected a list for default. Got {default!r} ({type(default)})"
+                f"Expected a Sequence for default. Got {default!r} ({type(default)})"
             )
         if len(default) != len(self._maps):
             raise ValueError(

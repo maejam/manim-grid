@@ -222,3 +222,8 @@ def is_vector_3d_like(vec: Any) -> TypeGuard[Vector3DLike]:
         and vec.dtype == np.float64
     )
     return seq or arr
+
+
+def is_non_string_sequence(seq: Any) -> TypeGuard[Sequence[Any]]:
+    """Return ``True`` iff ``seq`` is a Sequence BUT not a string."""
+    return isinstance(seq, Sequence) and not isinstance(seq, str)
