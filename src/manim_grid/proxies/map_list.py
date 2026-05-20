@@ -72,6 +72,7 @@ class MapBase(ABC, Generic[IT, UT]):
         if map_.signal_name is not None and map_._owner:
             signal(map_.signal_name).send(
                 map_._owner,
+                owner=map_._owner,
                 grid=map_._owner._grid
                 if hasattr(map_._owner, "_grid")
                 else map_._owner,

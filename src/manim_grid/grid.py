@@ -17,6 +17,7 @@ from manim_grid.exceptions import (
     GridShapeError,
     GridStencilError,
 )
+from manim_grid.handlers import ConnectionTuple, HandlerManager, default_connections
 from manim_grid.helpers import TrackedLazyAnimation
 from manim_grid.labels import LabelMapper
 from manim_grid.proxies.cells_updater_proxy import (
@@ -118,15 +119,7 @@ class Cell:
         if align is not None:
             self.config["align"] = align
 
-        self.align_mob(self.config["align"], margin)
-        signal("mob_inserted").send(self, grid=self._grid)
-
-    def align_mob(
-        self,
-        vector: Vector3D,
-        margin: np.ndarray[tuple[Literal[3]], np.dtype[np.float64]],
-    ) -> None:
-        self.mob.move_to(self.rect, aligned_edge=vector).shift(-vector * margin)
+        signal("mob_inserted").send(self, cell=self, grid=self._grid)
 
 
 class Grid(m.Group):
@@ -167,6 +160,12 @@ class Grid(m.Group):
         `num_visible_cols` is defined, the stencil will not be created.
     num_visible_cols
         Similar to `num_visible_rows` for columns.
+    initial_handlers
+        A Mapping from string name identifiers to tuples (signal_name, handler, sender)
+        that will be initially connected. Defaults to a set of predefined handlers that
+        should be useful for every use case (see `manim_grid.handlers`).
+        The :attr:`Grid.handlers` attribute allows connecting and disconnecting
+        individual handlers.
     **kwargs
         Additional keyword arguments forwarded to the base ``Group``.
 
@@ -194,6 +193,9 @@ class Grid(m.Group):
         The `Tags` instance attached to the grid itself.
     config
         A proxy giving access to the cells configuration dictionary.
+    update_cells
+        A proxy that allows to force an update of cells based on their config values
+        through a direct call, a context manager or a decorator.
 
     """
 
@@ -208,6 +210,7 @@ class Grid(m.Group):
         col_labels: Sequence[str] = (),
         num_visible_rows: int | None = None,
         num_visible_cols: int | None = None,
+        initial_handlers: Mapping[str, ConnectionTuple] | None = None,
         **kwargs: Any,
     ) -> None:
         self._stencil: Stencil | None = None
@@ -232,6 +235,10 @@ class Grid(m.Group):
         self._num_visible_cols = num_visible_cols or num_cols
         self._first_visible_row = 0
         self._first_visible_col = 0
+        connections = (
+            initial_handlers if initial_handlers is not None else default_connections
+        )
+        self.handlers = HandlerManager(connections)
 
         self.rects = RectsProxy(self)
         self.mobs = MobsProxy(self, margin=self._margin)
@@ -535,7 +542,7 @@ class Grid(m.Group):
         """
         super().add(*mobjects)
         for mob in mobjects:
-            signal("mob_added").send(mob, grid=self)
+            signal("mob_added").send(mob, mob=mob, grid=self)
 
         if self._stencil is not None:
             super().add(self.stencil)
@@ -547,7 +554,7 @@ class Grid(m.Group):
         """Remove submobjects."""
         super().remove(*mobjects)
         for mob in mobjects:
-            signal("mob_removed").send(mob, grid=self)
+            signal("mob_removed").send(mob, mob=mob, grid=self)
         return self
 
     @property
@@ -1121,6 +1128,7 @@ class Grid(m.Group):
 
             signal("row_insertion_processed").send(
                 self,
+                grid=self,
                 row_index=row_index,
                 height=height,
                 label=label,
@@ -1141,6 +1149,7 @@ class Grid(m.Group):
 
             signal("row_insertion_displayed").send(
                 self,
+                grid=self,
                 row_index=row_index,
                 height=height,
                 label=label,
@@ -1343,6 +1352,7 @@ class Grid(m.Group):
 
             signal("column_insertion_processed").send(
                 self,
+                grid=self,
                 col_index=col_index,
                 width=width,
                 label=label,
@@ -1363,6 +1373,7 @@ class Grid(m.Group):
 
             signal("column_insertion_displayed").send(
                 self,
+                grid=self,
                 col_index=col_index,
                 width=width,
                 label=label,

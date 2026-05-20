@@ -11,6 +11,8 @@ mobs_assigned = signal(
     ----
     sender
         The grid instance.
+    grid
+        The grid instance.
     index
         The index passed to `grid.mobs`. It is a tuple (row_key, col_key) where row_key
         and col_key can be anything supported by the mobs proxy (int, label, slice,
@@ -30,7 +32,7 @@ mobs_assigned = signal(
     >>> # automatically paint all mobjects in RED and add them as submojects
 
     >>> @mobs_added.connect
-    >>> def paint_red_and_add(grid, index, mobs):
+    >>> def paint_red_and_add(sender, grid, index, mobs):
     >>>     for mob in mobs:
     >>>         mob.set_color(RED)
     >>>     grid.add(*mobs)
@@ -50,12 +52,15 @@ mob_inserted = signal(
     This signal is sent **after** users have called `grid.mobs[...] = ...`, for each
     mobject insertion into a cell. It is meant to be used when it is necessary to target
     only specific cells. Also, since the mobject is inserted at that point, the
-    previous mobject is now accessible through the `old` attribute and the mobject is
-    positioned which makes it possible to adjust its position.
+    previous mobject is now accessible through the `old` attribute and the config
+    attribute is updated with the alignement vector that may have been passed which
+    makes it possible to adjust its position for example.
 
     Data
     ----
     sender
+        The Cell instance.
+    cell
         The Cell instance.
     grid
         The grid that cell belongs to.
@@ -69,7 +74,7 @@ mob_inserted = signal(
     >>> # automatically remove olds and add mobs as submojects in the first column only
 
     >>> @mob_inserted.connect
-    >>> def auto_remove_add(cell, grid):
+    >>> def auto_remove_add(sender, cell, grid):
     >>>     if cell.col_index == 0:
     >>>         grid.remove(cell.old)
     >>>         grid.add(cell.mob)
@@ -89,6 +94,8 @@ mob_added = signal(
     Data
     ----
     sender
+        The mobject that is added as submobject.
+    mob
         The mobject that is added as submobject.
     grid
         The Grid instance.
@@ -112,6 +119,8 @@ mob_removed = signal(
     ----
     sender
         The mobject that is removed from the Grid submobjects.
+    mob
+        The mobject that is removed from the Grid submobjects.
     grid
         The Grid instance.
 
@@ -125,7 +134,7 @@ mob_removed = signal(
 
     >>> @mob_added.connect
     >>> @mob_removed.connect
-    >>> def warn_on_group(mob, grid):
+    >>> def warn_on_group(sender, mob, grid):
     >>>     if isinstance(mob, (Group, VGroup)):
     >>>         logger.warning("A Group was added/removed: %s", mob.submobjects)
 
@@ -142,7 +151,9 @@ tag_changed = signal(
     Data
     ----
     sender
-        The Cell or Grid instance that owns tha Tags.
+        The Cell or Grid instance that owns the Tags.
+    owner
+        The Cell or Grid instance that owns the Tags.
     grid
         The Grid instance.
     before
@@ -163,7 +174,7 @@ tag_changed = signal(
     >>> # add the value as a Text mobject when a given tag key is inserted
 
     >>> @tag_changed.connect
-    >>> def add_as_Text(cell, grid, before, after, key, value):
+    >>> def add_as_Text(sender, owner, grid, before, after, key, value):
     >>>     if key == "special_key":
     >>>         if value is not DELETED:
     >>>             txt = grid.mobs[cell.row_index, cell.col_index] = Text(value)
@@ -184,6 +195,8 @@ row_insertion_processed = signal(
     Data
     ----
     sender
+        The Grid instance.
+    grid
         The Grid instance.
     row_index
         The index of the inserted row.
@@ -213,6 +226,7 @@ row_insertion_processed = signal(
     >>> # interpolate the grid color as the animation progresses
     >>> @row_insertion_processed.connect
     >>> def interpolate_grid_color(
+    >>>     sender,
     >>>     grid,
     >>>     row_index,
     >>>     height,
@@ -252,6 +266,8 @@ row_insertion_displayed = signal(
     ----
     sender
         The Grid instance.
+    grid
+        The Grid instance.
     row_index
         The index of the inserted row.
     height
@@ -280,6 +296,7 @@ row_insertion_displayed = signal(
     >>> # play the animation backwards after it has finished
     >>> @row_insertion_displayed.connect
     >>> def revert_shift_animation(
+    >>>     sender,
     >>>     grid,
     >>>     row_index,
     >>>     height,
@@ -315,6 +332,8 @@ column_insertion_processed = signal(
     ----
     sender
         The Grid instance.
+    grid
+        The Grid instance.
     col_index
         The index of the inserted column.
     width
@@ -344,6 +363,7 @@ column_insertion_processed = signal(
     >>> # the animations from multiple insertions could then be pooled and played later
     >>> @column_insertion_processed.connect
     >>> def cancel_shift(
+    >>>     sender,
     >>>     grid,
     >>>     col_index,
     >>>     width,
@@ -375,6 +395,8 @@ column_insertion_displayed = signal(
     ----
     sender
         The Grid instance.
+    grid
+        The Grid instance.
     col_index
         The index of the inserted column.
     width
@@ -403,7 +425,7 @@ column_insertion_displayed = signal(
     >>> # add the label to the new column
     >>> @column_insertion_displayed.connect
     >>> def add_label(
-    >>>     self,
+    >>>     sender,
     >>>     grid,
     >>>     col_index,
     >>>     width,

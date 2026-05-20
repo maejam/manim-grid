@@ -93,7 +93,9 @@ class MobsProxy(
         subarray = self._grid.cells[cast(Any, selector)]
         self._postprocess_set(subarray, value, **kwargs)
         mobs = [value] if isinstance(value, m.Mobject) else value
-        signal("mobs_assigned").send(self._grid, index=index, mobs=mobs)
+        signal("mobs_assigned").send(
+            self._grid, grid=self._grid, index=index, mobs=mobs
+        )
 
     def _preprocess_set(
         self,
