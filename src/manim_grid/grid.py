@@ -63,6 +63,7 @@ class Cell:
     """
 
     default_config: ClassVar[dict[str, Any]] = {"align": m.ORIGIN, "mode": "NONE"}
+    default_priorities: ClassVar[dict[str, int]] = {"align": 100, "mode": 0}
 
     _grid: "Grid" = field(repr=False)
     rect: m.Rectangle = field(repr=False)
@@ -78,6 +79,8 @@ class Cell:
         self.old.name = f"Old(EmptyMobject)[{self.row_index}, {self.col_index}]"
         self.tags = Tags(owner=self)
         self.config = Config(owner=self, **self.default_config)
+        for key, value in self.default_priorities.items():
+            self.config.set_priority(key, value)
         self.updater = CellUpdater(owner=self)
         self._grid.add(self.updater)
 
@@ -93,8 +96,7 @@ class Cell:
 
         1. Store the existing ``mob`` in ``self.old``.
         2. Assign the supplied ``mob`` to ``self.mob``.
-        3. Position the new object inside ``self.rect`` using manim’s
-           ``move_to``/``shift`` methods.
+        3. Call the `mob_inserted` signal.
 
         Parameters
         ----------
@@ -196,6 +198,8 @@ class Grid(m.Group):
     update_cells
         A proxy that allows to force an update of cells based on their config values
         through a direct call, a context manager or a decorator.
+    handlers
+        The HandlerManager instance that allows to connect/disconnect default handlers.
 
     """
 

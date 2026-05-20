@@ -45,7 +45,6 @@ class ConfigPriorityMixin:
 
             new_item = replace(old_map, priority=priority)
             map_._data[key] = new_item
-
         return self
 
 
@@ -59,6 +58,12 @@ class Config(ConfigPriorityMixin, Map[ConfigItem, Any]):
         if isinstance(internal, _Missing):
             return internal
         return internal.value
+
+    def sort_by_priority(self) -> dict[str, Any]:
+        prio_sorted = dict(
+            sorted(self._data.items(), key=lambda item: item[1].priority)
+        )
+        return {key: self.unwrap(value) for key, value in prio_sorted.items()}
 
     @overload
     def __getitem__(self, key: Literal["align"]) -> Vector3D: ...
