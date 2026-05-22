@@ -23,7 +23,7 @@ def test_tags_str(cell: Cell):
 
 
 def test_tagslist_str(cell: Cell):
-    tags = TagsList(Tags(one=1, two=2, owner=cell), Tags(three=3, owner=cell))
+    tags = TagsList([Tags(one=1, two=2, owner=cell), Tags(three=3, owner=cell)])
     assert str(tags) == "[Tags(one=1, two=2), Tags(three=3)]"
 
 
@@ -33,7 +33,7 @@ def test_tags_repr(cell: Cell):
 
 
 def test_tagslist_repr(cell: Cell):
-    tags = TagsList(Tags(one=1, two=2, owner=cell), Tags(three=3, owner=cell))
+    tags = TagsList([Tags(one=1, two=2, owner=cell), Tags(three=3, owner=cell)])
     assert str(tags) == "[Tags(one=1, two=2), Tags(three=3)]"
 
 

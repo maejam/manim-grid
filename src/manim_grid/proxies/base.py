@@ -237,9 +237,7 @@ class ReadableProxy(_BaseProxy[S], Generic[S, BO]):
 
         return cast(
             BO,
-            self._bulk_container(
-                *[getattr(cell, self._attr) for cell in subarray.flat]
-            ),
+            self._bulk_container(getattr(cell, self._attr) for cell in subarray.flat),
         )
 
 

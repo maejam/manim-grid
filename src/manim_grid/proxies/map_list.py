@@ -1,6 +1,7 @@
 import keyword
 from abc import ABC, abstractmethod
 from collections.abc import (
+    Iterable,
     Iterator,
     MutableMapping,
     Sequence,
@@ -165,7 +166,7 @@ class MapList(MapBase[IT, UT], MutableMapping[str, Sequence[UT | _Missing]]):
 
     """
 
-    def __init__(self, *maps: Map[IT, UT]) -> None:
+    def __init__(self, maps: Iterable[Map[IT, UT]]) -> None:
         self._maps = list(maps)
 
     def itermaps(self) -> Iterator["Map[IT, UT]"]:
