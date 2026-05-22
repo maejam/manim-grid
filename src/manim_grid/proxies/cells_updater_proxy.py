@@ -65,14 +65,12 @@ class CellUpdaterBase(ABC):
     ) -> None:
         for cell_updater in self:
             merged = cell_updater._merge_config(keys, **overrides)
-            print(merged)
-            cell_updater._updater = partial(cell_updater._update, **merged)
-            cell_updater.add_updater(cell_updater._updater)
+            updater = partial(cell_updater._update, **merged)
+            cell_updater.add_updater(updater)
 
     def _detach_updaters(self) -> None:
         for cell_updater in self:
-            if cell_updater._updater is not None:
-                cell_updater.remove_updater(cell_updater._updater)
+            cell_updater.remove_updater(cell_updater.updaters[-1])
 
 
 class CellUpdater(CellUpdaterBase, m.Mobject):
