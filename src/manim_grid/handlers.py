@@ -1,9 +1,9 @@
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 import manim as m
 from blinker import ANY, signal
-from manim_utils import get_bounds
+from manim_utils import clip_vmobject, get_bounds
 
 if TYPE_CHECKING:
     from manim_grid.grid import Cell, Grid
@@ -21,15 +21,25 @@ def align_mobject(sender: Any, cell: "Cell", **kwargs: Any) -> None:
     cell.mob.move_to(cell.rect, aligned_edge=vec).shift(-vec * cell._grid._margin)
 
 
+def _max_width_height(cell: "Cell") -> tuple[float, float]:
+    """Return a tuple (max_width, max_height).
+
+    The mobject in a Cell should not exceed those dimensions to be considered inside
+    its Rectangle.
+    """
+    w, h, _, _ = get_bounds(cell.rect, as_len=True, include_stroke=False)
+    w -= cell._grid._margin[0]
+    h -= cell._grid._margin[1]
+    return w, h
+
+
 def scale_mobject(
     sender: str, key: str, value: str, grid: "Grid", cell: "Cell"
 ) -> None:
     """Scale a mobject that is bigger than its Cell Rectangle to fit inside it."""
     if value != "SCALE":
         return
-    w, h, _, _ = get_bounds(cell.rect, as_len=True, include_stroke=False)
-    w -= cell._grid._margin[0]
-    h -= cell._grid._margin[1]
+    w, h = _max_width_height(cell)
     if cell.mob.width > w:
         cell.mob.scale_to_fit_width(w)
     if cell.mob.height > h:
@@ -42,13 +52,26 @@ def stretch_mobject(
     """Stretch a mobject that is bigger than its Cell Rectangle to fit inside it."""
     if value != "STRETCH":
         return
-    w, h, _, _ = get_bounds(cell.rect, as_len=True, include_stroke=False)
-    w -= cell._grid._margin[0]
-    h -= cell._grid._margin[1]
+    w, h = _max_width_height(cell)
     if cell.mob.width > w:
         cell.mob.stretch_to_fit_width(w)
     if cell.mob.height > h:
         cell.mob.stretch_to_fit_height(h)
+
+
+def crop_mobject(sender: str, key: str, value: str, grid: "Grid", cell: "Cell") -> None:
+    """Crop a mobject that is bigger than its Cell Rectangle to fit inside it."""
+    if value != "CROP":
+        return
+    if not isinstance(cell.mob, m.VMobject):
+        raise TypeError("Can only be used with VMobjects.")
+    if not hasattr(cell.mob, "_mobcopy"):
+        cell.mob.__dict__["_mobcopy"] = cell.mob.copy()
+    w, h = _max_width_height(cell)
+    mobcopy = cast(m.VMobject, cell.mob._mobcopy)
+    if mobcopy.width > w or mobcopy.height > h:
+        result = clip_vmobject(mobcopy, cell.rect)
+        cell.mob.become(result)
 
 
 ConnectionTuple: TypeAlias = tuple[str, Callable[..., Any], Any]
@@ -63,6 +86,7 @@ default_connections: dict[str, ConnectionTuple] = {
     # Cell mode
     "scale_on_cell_updating": ("cell_updating", scale_mobject, "mode"),
     "stretch_on_cell_updating": ("cell_updating", stretch_mobject, "mode"),
+    "crop_on_cell_updating": ("cell_updating", crop_mobject, "mode"),
 }
 
 
