@@ -20,7 +20,7 @@ class CellUpdaterBase(ABC):
     @abstractmethod
     def __iter__(self) -> Iterator["CellUpdater"]: ...
 
-    def __call__(self, keys: Iterable[str] = (), **overrides: Any) -> None:
+    def __call__(self, keys: Iterable[str] | None = None, **overrides: Any) -> None:
         """Allow direct call: `grid.update_cells[...]()`.
 
         If neither `keys` nor `overrides` are passed, all the cell Config keys are
@@ -40,7 +40,9 @@ class CellUpdaterBase(ABC):
             merged = cell_updater._merge_config(keys, **overrides)
             cell_updater._update(cell_updater, **merged)
 
-    def run(self, keys: Iterable[str] = (), **overrides: Any) -> "_CMDecoWrapper":
+    def run(
+        self, keys: Iterable[str] | None = None, **overrides: Any
+    ) -> "_CMDecoWrapper":
         """Use as a context manager or decorator.
 
         If neither `keys` nor `overrides` are passed, all the cell Config keys are
@@ -58,9 +60,12 @@ class CellUpdaterBase(ABC):
         """
         return _CMDecoWrapper(self, keys, **overrides)
 
-    def _attach_updaters(self, keys: Iterable[str], **overrides: Any) -> None:
+    def _attach_updaters(
+        self, keys: Iterable[str] | None = None, **overrides: Any
+    ) -> None:
         for cell_updater in self:
             merged = cell_updater._merge_config(keys, **overrides)
+            print(merged)
             cell_updater._updater = partial(cell_updater._update, **merged)
             cell_updater.add_updater(cell_updater._updater)
 
@@ -80,20 +85,21 @@ class CellUpdater(CellUpdaterBase, m.Mobject):
         yield self
 
     def _merge_config(
-        self, keys: Iterable[str] = (), **overrides: Any
+        self, keys: Iterable[str] | None = None, **overrides: Any
     ) -> Config | dict[str, Any]:
         """Determine the config keys to update, their order and their values."""
         config = self._owner.config.sort_by_priority()
-        if not keys and not overrides:
+        if keys is None and not overrides:
             return config
-        merged = config if not keys else {}
-        for key in keys:
-            try:
-                merged[key] = config[key]
-            except KeyError as e:
-                raise KeyError(
-                    f"{self._owner} does not have {key!r} config key."
-                ) from e
+        merged = config if keys is None else {}
+        if keys:
+            for key in keys:
+                try:
+                    merged[key] = config[key]
+                except KeyError as e:
+                    raise KeyError(
+                        f"{self._owner} does not have {key!r} config key."
+                    ) from e
         merged.update(overrides)
         return merged
 
@@ -110,7 +116,10 @@ class CellUpdaterList(list[CellUpdater], CellUpdaterBase): ...
 
 class _CMDecoWrapper:
     def __init__(
-        self, parent: CellUpdaterBase, keys: Iterable[str], **overrides: Any
+        self,
+        parent: CellUpdaterBase,
+        keys: Iterable[str] | None = None,
+        **overrides: Any,
     ) -> None:
         self._parent = parent
         self._keys = keys
