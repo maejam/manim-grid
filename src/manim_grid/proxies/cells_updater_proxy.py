@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from functools import partial
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -15,21 +15,53 @@ if TYPE_CHECKING:
 
 
 class CellUpdaterBase(ABC):
+    """Define common logic for CellUpdater and CellUpdaterList."""
+
     @abstractmethod
     def __iter__(self) -> Iterator["CellUpdater"]: ...
 
-    def __call__(self, *args: str, **kwargs: Any) -> None:
-        for cell_updater in self:
-            options = cell_updater._merge_config(*args, **kwargs)
-            cell_updater._update(cell_updater, **options)
+    def __call__(self, keys: Iterable[str] = (), **overrides: Any) -> None:
+        """Allow direct call: `grid.update_cells[...]()`.
 
-    def run(self, **kwargs: Any) -> "_CMDecoWrapper":
-        return _CMDecoWrapper(self, **kwargs)
+        If neither `keys` nor `overrides` are passed, all the cell Config keys are
+        applied in their order of priority.
 
-    def _attach_updaters(self, **options: Any) -> None:
+        Parameters
+        ----------
+        keys
+            Acts as a filter. Only the passed config keys will be applied, in the order
+            they are passed and with the values as defined in the cell Config.
+        **overrides
+            Allows overriding config key values only for this call. It is possible to
+            pass keys that are not defined in the cell Config. In that case, a signal
+            will be sent for each of those keys as well.
+        """
         for cell_updater in self:
-            options_ = cell_updater._merge_config(**options)
-            cell_updater._updater = partial(cell_updater._update, **options_)
+            merged = cell_updater._merge_config(keys, **overrides)
+            cell_updater._update(cell_updater, **merged)
+
+    def run(self, keys: Iterable[str] = (), **overrides: Any) -> "_CMDecoWrapper":
+        """Use as a context manager or decorator.
+
+        If neither `keys` nor `overrides` are passed, all the cell Config keys are
+        applied in their order of priority.
+
+        Parameters
+        ----------
+        keys
+            Acts as a filter. Only the passed config keys will be applied, in the order
+            they are passed and with the values as defined in the cell Config.
+        **overrides
+            Allows overriding config key values only for this call. It is possible to
+            pass keys that are not defined in the cell Config. In that case, a signal
+            will be sent for each of those keys as well.
+        """
+        return _CMDecoWrapper(self, keys, **overrides)
+
+    def _attach_updaters(self, keys: Iterable[str], **overrides: Any) -> None:
+        for cell_updater in self:
+            merged = cell_updater._merge_config(keys, **overrides)
+            cell_updater._updater = partial(cell_updater._update, **merged)
             cell_updater.add_updater(cell_updater._updater)
 
     def _detach_updaters(self) -> None:
@@ -47,21 +79,27 @@ class CellUpdater(CellUpdaterBase, m.Mobject):
     def __iter__(self) -> Iterator["CellUpdater"]:
         yield self
 
-    def _merge_config(self, *args: str, **kwargs: Any) -> Config | dict[str, Any]:
+    def _merge_config(
+        self, keys: Iterable[str] = (), **overrides: Any
+    ) -> Config | dict[str, Any]:
+        """Determine the config keys to update, their order and their values."""
         config = self._owner.config.sort_by_priority()
-        if not args and not kwargs:
+        if not keys and not overrides:
             return config
-        d = (
-            {key: value for key, value in config.items() if key in args}
-            if args
-            else config
-        )
-        d.update(kwargs)
-        return d
+        merged = config if not keys else {}
+        for key in keys:
+            try:
+                merged[key] = config[key]
+            except KeyError as e:
+                raise KeyError(
+                    f"{self._owner} does not have {key!r} config key."
+                ) from e
+        merged.update(overrides)
+        return merged
 
-    def _update(self, cell_updater: m.Mobject, **options: Any) -> None:
+    def _update(self, cell_updater: m.Mobject, **merged: Any) -> None:
         cell = cast("Cell", cell_updater._owner)
-        for key, value in options.items():
+        for key, value in merged.items():
             signal("cell_updating").send(
                 key, key=key, value=value, grid=cell._grid, cell=cell
             )
@@ -71,12 +109,15 @@ class CellUpdaterList(list[CellUpdater], CellUpdaterBase): ...
 
 
 class _CMDecoWrapper:
-    def __init__(self, parent: CellUpdaterBase, **options: Any) -> None:
+    def __init__(
+        self, parent: CellUpdaterBase, keys: Iterable[str], **overrides: Any
+    ) -> None:
         self._parent = parent
-        self._options = options
+        self._keys = keys
+        self._overrides = overrides
 
     def __enter__(self) -> None:
-        self._parent._attach_updaters(**self._options)
+        self._parent._attach_updaters(self._keys, **self._overrides)
 
     def __exit__(
         self,
