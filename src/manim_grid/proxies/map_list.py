@@ -84,6 +84,8 @@ class MapBase(ABC, Generic[IT, UT]):
             )
 
     def __getattr__(self, name: str) -> Any:
+        if name.startswith("__") and name.endswith("__"):
+            raise AttributeError(name)
         return self[name]
 
     def __setattr__(self, name: str, value: Any) -> None:
