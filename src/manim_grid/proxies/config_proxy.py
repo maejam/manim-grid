@@ -69,6 +69,9 @@ class Config(ConfigPriorityMixin, Map[ConfigItem, Any]):
     def __getitem__(self, key: Literal["align"]) -> Vector3D: ...
 
     @overload
+    def __getitem__(self, key: Literal["mode"]) -> str: ...
+
+    @overload
     def __getitem__(self, key: str) -> Any | _Missing: ...
 
     def __getitem__(self, key: str) -> Any | _Missing:
@@ -76,6 +79,9 @@ class Config(ConfigPriorityMixin, Map[ConfigItem, Any]):
 
     @overload
     def __setitem__(self, key: Literal["align"], value: Vector3D) -> None: ...
+
+    @overload
+    def __setitem__(self, key: Literal["mode"], value: str) -> None: ...
 
     @overload
     def __setitem__(self, key: str, value: Any | _Missing) -> None: ...
@@ -91,10 +97,21 @@ class Config(ConfigPriorityMixin, Map[ConfigItem, Any]):
     def align(self, value: Vector3D) -> None:
         self["align"] = value
 
+    @property
+    def mode(self) -> str:
+        return self["mode"]
+
+    @mode.setter
+    def mode(self, value: str) -> None:
+        self["mode"] = value
+
 
 class ConfigList(ConfigPriorityMixin, MapList[ConfigItem, Any]):
     @overload
     def __getitem__(self, key: Literal["align"]) -> list[Vector3D]: ...
+
+    @overload
+    def __getitem__(self, key: Literal["mode"]) -> list[str]: ...
 
     @overload
     def __getitem__(self, key: str) -> list[Any | _Missing]: ...
@@ -104,6 +121,9 @@ class ConfigList(ConfigPriorityMixin, MapList[ConfigItem, Any]):
 
     @overload
     def __setitem__(self, key: Literal["align"], value: Sequence[Vector3D]) -> None: ...
+
+    @overload
+    def __setitem__(self, key: Literal["mode"], value: Sequence[str]) -> None: ...
 
     @overload
     def __setitem__(self, key: str, value: Sequence[Any | _Missing]) -> None: ...
@@ -118,6 +138,14 @@ class ConfigList(ConfigPriorityMixin, MapList[ConfigItem, Any]):
     @align.setter
     def align(self, value: Sequence[Vector3D]) -> None:
         self["align"] = value
+
+    @property
+    def mode(self) -> list[str]:
+        return self["mode"]
+
+    @mode.setter
+    def mode(self, value: Sequence[str]) -> None:
+        self["mode"] = value
 
 
 class ConfigProxy(ReadableProxy[Config, ConfigList]):
