@@ -379,3 +379,124 @@ def test_col_insertion(simple_grid, signal_monitor):
         for grp1, grp2, grp3 in zipped:
             for mob1, mob2, mob3 in zip(grp1, grp2, grp3, strict=True):
                 assert mob1 is mob2 is mob3
+
+
+# ----------------------------------------------------------------------
+# cell_updating
+# ----------------------------------------------------------------------
+def test_cell_updating_call_single_cell(simple_grid, signal_monitor):
+    with signal_monitor("cell_updating") as monitor:
+        simple_grid.update_cells[0, 0]([], a=1, b=2)  # 2
+        monitor.assert_received(2)
+        event = next(monitor)
+        assert event.sender == "a"
+        assert event.key == "a"
+        assert event.value == 1
+        assert event.grid is simple_grid
+        assert event.cell is simple_grid.cells[0, 0]
+        event = next(monitor)
+        assert event.key == "b"
+        monitor.assert_no_others()
+
+
+def test_cell_updating_call_multiple_cells(simple_grid, signal_monitor):
+    with signal_monitor("cell_updating") as monitor:
+        simple_grid.update_cells[0]([], a=1, b=2)  # 6
+    monitor.assert_received(6)
+    event = next(monitor)
+    assert event.sender == "a"
+    assert event.key == "a"
+    assert event.value == 1
+    assert event.grid is simple_grid
+    assert event.cell is simple_grid.cells[0, 0]
+    event = monitor[5]
+    assert event.sender == "b"
+    assert event.key == "b"
+    assert event.value == 2
+    assert event.grid is simple_grid
+    assert event.cell is simple_grid.cells[0, 2]
+    monitor.assert_no_others()
+
+
+def test_cell_updating_contextmanager_single_cell(simple_grid, signal_monitor):
+    with (
+        signal_monitor("cell_updating") as monitor,
+        simple_grid.update_cells[0, 0].run([], a=1, b=2),
+    ):
+        simple_grid.update()  # 2
+        monitor.assert_received(2)
+        event = next(monitor)
+        assert event.sender == "a"
+        assert event.key == "a"
+        assert event.value == 1
+        assert event.grid is simple_grid
+        assert event.cell is simple_grid.cells[0, 0]
+        event = next(monitor)
+        assert event.key == "b"
+        monitor.assert_no_others()
+
+
+def test_cell_updating_contextmanager_multiple_cells(simple_grid, signal_monitor):
+    with (
+        signal_monitor("cell_updating") as monitor,
+        simple_grid.update_cells[0].run([], a=1, b=2),
+    ):
+        simple_grid.update()  # 6
+        monitor.assert_received(6)
+        event = next(monitor)
+        assert event.sender == "a"
+        assert event.key == "a"
+        assert event.value == 1
+        assert event.grid is simple_grid
+        assert event.cell is simple_grid.cells[0, 0]
+        event = monitor[5]
+        assert event.sender == "b"
+        assert event.key == "b"
+        assert event.value == 2
+        assert event.grid is simple_grid
+        assert event.cell is simple_grid.cells[0, 2]
+        monitor.assert_no_others()
+
+
+def test_cell_updating_decorator_single_cell(simple_grid, signal_monitor):
+    with signal_monitor("cell_updating") as monitor:
+
+        @simple_grid.update_cells[0, 0].run([], a=1, b=2)
+        def func():
+            simple_grid.update()
+
+        func()  # 2
+        monitor.assert_received(2)
+        event = next(monitor)
+        assert event.sender == "a"
+        assert event.key == "a"
+        assert event.value == 1
+        assert event.grid is simple_grid
+        assert event.cell is simple_grid.cells[0, 0]
+        event = next(monitor)
+        assert event.key == "b"
+        monitor.assert_no_others()
+
+
+def test_cell_updating_decorator_multiple_cells(simple_grid, signal_monitor):
+    with signal_monitor("cell_updating") as monitor:
+
+        @simple_grid.update_cells[0].run([], a=1, b=2)
+        def func():
+            simple_grid.update()
+
+        func()  # 6
+        monitor.assert_received(6)
+        event = next(monitor)
+        assert event.sender == "a"
+        assert event.key == "a"
+        assert event.value == 1
+        assert event.grid is simple_grid
+        assert event.cell is simple_grid.cells[0, 0]
+        event = monitor[5]
+        assert event.sender == "b"
+        assert event.key == "b"
+        assert event.value == 2
+        assert event.grid is simple_grid
+        assert event.cell is simple_grid.cells[0, 2]
+        monitor.assert_no_others()
