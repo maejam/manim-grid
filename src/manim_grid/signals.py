@@ -447,3 +447,27 @@ column_insertion_displayed = signal(
 
     """,
 )
+
+cell_updating = signal(
+    "cell_updating",
+    doc="""Emitted when a cell is being updated, for every config key/value pair.
+
+    Data
+    ----
+    sender
+        The config key that is being updated.
+    key
+        The config key that is being updated.
+    value
+        The updated value for that config key.
+    grid
+        The Grid instance.
+    cell
+        The Cell instance.
+
+    Return Value
+    ------------
+    None
+
+""",
+)
