@@ -1,7 +1,6 @@
 from collections.abc import Callable, Generator, Hashable, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
-from functools import partial
 from typing import Any, ClassVar, Literal, Self, cast
 
 import manim as m
@@ -585,7 +584,7 @@ class Grid(m.Group):
         viewport = self._compute_viewport(m.Rectangle())
         return Stencil(
             # add viewport to wrapped to prevent weird artifacts when scrolling
-            # past the last row/line
+            # past the last row/column
             clip=viewport,
             wrapped=m.VGroup(self.lattice, viewport),
             name="Stencil",
@@ -620,7 +619,6 @@ class Grid(m.Group):
             to_row = self._first_visible_row + self._num_visible_rows
             to_col = self._first_visible_col + self._num_visible_cols
 
-            # take viewport and rects stroke widths into account (in 1/100 munits)
             visible_rects = self.rects[
                 self._first_visible_row : to_row, self._first_visible_col : to_col
             ]
@@ -662,7 +660,18 @@ class Grid(m.Group):
             Keyword arguments passed to the predicate.
 
         """
-        updater_func = partial(self._compute_viewport, predicate=predicate, **kwargs)
+        # NOTE: simply adding the updater to the viewport would create a lag because
+        # the stencil updater runs before and would not see the updated viewport. To
+        # solve this problem, we remove the stencil updater, call it from inside the
+        # viewport updater and re-add the stencil updater in the finally block.
+        if self._stencil is not None:
+            self.stencil.remove_updater(self.stencil._adapt_stencil)
+
+        def updater_func(viewport: m.Mobject) -> None:
+            self._compute_viewport(viewport, predicate, **kwargs)
+            if self._stencil is not None:
+                self.stencil._adapt_stencil(self.stencil)
+
         self.viewport.add_updater(updater_func)
 
         if self._frame is not None:
@@ -672,10 +681,10 @@ class Grid(m.Group):
         finally:
             # update viewport (and stencil to cover it if it expands) for static frames
             updater_func(viewport=self.viewport)
-            if self._stencil is not None:
-                self.stencil.update()
 
             self.viewport.remove_updater(updater_func)
+            if self._stencil is not None:
+                self.stencil.add_updater(self.stencil._adapt_stencil)
             if self._frame is not None:
                 self.frame.remove_updater(self._update_frame)
 
