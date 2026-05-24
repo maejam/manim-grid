@@ -113,7 +113,7 @@ class Cell:
         self.old.name = (
             f"Old({type(self.old).__name__})[{self.row_index}, {self.col_index}]"
         )
-        self.mob = mob
+        self.mob = mob.set_z_index(self._grid.z_index)
         self.mob.name = (
             f"Mob({type(self.mob).__name__})[{self.row_index}, {self.col_index}]"
         )

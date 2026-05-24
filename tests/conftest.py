@@ -35,6 +35,7 @@ def dummy_mob():
             self.pos = None
             self.aligned_edge = None
             self.shift_vec = None
+            super().__init__()
 
         def move_to(self, target, aligned_edge=None):  # type:ignore[reportIncompatibleMethodOverride]
             self.pos = target
