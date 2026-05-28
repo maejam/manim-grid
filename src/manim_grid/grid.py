@@ -679,13 +679,14 @@ class Grid(m.Group):
         try:
             yield
         finally:
-            # update viewport (and stencil to cover it if it expands) for static frames
+            # update viewport and frame for static frames
             updater_func(viewport=self.viewport)
 
             self.viewport.remove_updater(updater_func)
             if self._stencil is not None:
                 self.stencil.add_updater(self.stencil._adapt_stencil)
             if self._frame is not None:
+                self._update_frame(self.frame)
                 self.frame.remove_updater(self._update_frame)
 
     @property
