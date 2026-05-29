@@ -15,6 +15,9 @@ UNSET = _Unset.UNSET
 class _Missing(Enum):
     MISSING = "<MISSING>"
 
+    def __repr__(self) -> str:
+        return self.value
+
 
 MISSING = _Missing.MISSING
 """Sentinel used to signal a missing object."""
