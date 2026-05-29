@@ -156,7 +156,9 @@ class Map(MapBase[IT, UT], MutableMapping[str, UT | _Missing]):
         return f"{type(self).__name__}({', '.join(parts)})"
 
 
-class MapList(MapBase[IT, UT], MutableMapping[str, Sequence[UT | _Missing]]):
+class MapList(
+    MapBase[IT, UT], MutableMapping[str, UT | _Missing | Sequence[UT | _Missing]]
+):
     """A list of Map with the same interface as a single Map.
 
     Note
@@ -180,12 +182,15 @@ class MapList(MapBase[IT, UT], MutableMapping[str, Sequence[UT | _Missing]]):
             raise KeyError(key)
         return [map_.unwrap(map_._data.get(key, MISSING)) for map_ in self._maps]
 
-    def __setitem__(self, key: str, value: Sequence[UT | _Missing]) -> None:
+    def __setitem__(
+        self, key: str, value: UT | _Missing | Sequence[UT | _Missing]
+    ) -> None:
         """Set values from a Sequence (one for each Map)."""
         self._validate_key(key)
 
         if not is_non_string_sequence(value):
-            raise TypeError(f"Expected a Sequence. Got {value!r} ({type(value)})")
+            # broadcast
+            value = [cast(UT | _Missing, value)] * len(self._maps)
         if len(value) != len(self._maps):
             raise ValueError(
                 f"Expected {len(self._maps)} values for key '{key}', got {len(value)}"
@@ -223,7 +228,7 @@ class MapList(MapBase[IT, UT], MutableMapping[str, Sequence[UT | _Missing]]):
         return f"{type(self).__name__}({self._maps})"
 
     def setdefault(  # pyright: ignore[reportIncompatibleMethodOverride]
-        self, key: str, default: Sequence[UT | _Missing]
+        self, key: str, default: UT | _Missing | Sequence[UT | _Missing]
     ) -> list[UT | _Missing]:
         """Set `key` from `default` Sequence in Maps where it is missing.
 

@@ -120,15 +120,21 @@ class ConfigList(ConfigPriorityMixin, MapList[ConfigItem, Any]):
         return super().__getitem__(key)
 
     @overload
-    def __setitem__(self, key: Literal["align"], value: Sequence[Vector3D]) -> None: ...
+    def __setitem__(
+        self, key: Literal["align"], value: Vector3D | Sequence[Vector3D]
+    ) -> None: ...
 
     @overload
-    def __setitem__(self, key: Literal["mode"], value: Sequence[str]) -> None: ...
+    def __setitem__(self, key: Literal["mode"], value: str | Sequence[str]) -> None: ...
 
     @overload
-    def __setitem__(self, key: str, value: Sequence[Any | _Missing]) -> None: ...
+    def __setitem__(
+        self, key: str, value: Any | _Missing | Sequence[Any | _Missing]
+    ) -> None: ...
 
-    def __setitem__(self, key: str, value: Sequence[Any | _Missing]) -> None:
+    def __setitem__(
+        self, key: str, value: Any | _Missing | Sequence[Any | _Missing]
+    ) -> None:
         return super().__setitem__(key, value)
 
     @property
@@ -136,7 +142,7 @@ class ConfigList(ConfigPriorityMixin, MapList[ConfigItem, Any]):
         return self["align"]
 
     @align.setter
-    def align(self, value: Sequence[Vector3D]) -> None:
+    def align(self, value: Vector3D | Sequence[Vector3D]) -> None:
         self["align"] = value
 
     @property
@@ -144,7 +150,7 @@ class ConfigList(ConfigPriorityMixin, MapList[ConfigItem, Any]):
         return self["mode"]
 
     @mode.setter
-    def mode(self, value: Sequence[str]) -> None:
+    def mode(self, value: str | Sequence[str]) -> None:
         self["mode"] = value
 
 

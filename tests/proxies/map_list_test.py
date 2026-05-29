@@ -167,3 +167,12 @@ def test_tagslist_items(simple_grid: Grid):
         ("foo", ["bar", "bar", MISSING]),
         ("baz", [42, 42, MISSING]),
     ]
+
+
+def test_tagslist_setitem(simple_grid: Grid):
+    # broadcasting
+    simple_grid.tags[0]["foo"] = "bar"
+    assert simple_grid.tags[0, 0].foo == simple_grid.tags[0, 1].foo == "bar"
+    # with sequence
+    simple_grid.tags[1]["foo"] = ["qux"] * 3
+    assert simple_grid.tags[1, 0].foo == simple_grid.tags[1, 1].foo == "qux"
