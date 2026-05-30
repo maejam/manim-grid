@@ -1,9 +1,9 @@
 """Build boolean masks to easily select cells that satisfy a given condition.
 
-Proxies (grid.mobs/olds/tags/rects) provide a `mask` method that can be used to
+Proxies (grid.mobs/olds/tags/rects...) provide a `mask` method that can be used to
 build a boolean NumPy array. This array can then be used on any proxy to filter
 the cells that satisfies the expressed condition.
-This scene tries to demonstrates some possible uses with a (very) contrived example.
+This scene tries to demonstrate some possible uses with a (very) contrived example.
 """
 
 from manim import *

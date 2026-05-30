@@ -36,7 +36,7 @@ class Inserting(Scene):
             # insert_row and insert_column act as context managers. They yield:
             # 1. an animation object that can be played to animate the shift.
             # 2. the last_col (or row) as a VDict with keys "mobs", "olds" and rects.
-            # 3. a ValueTracker oject that tracks the advancement of the animation (alpha).
+            # 3. a ValueTracker object that tracks the advancement of the animation (alpha).
             self.play(anim, run_time=2)
 
         self.wait()
@@ -80,6 +80,7 @@ class InsertingWithSignal(Scene):
 
     def on_row_inserted(
         self,
+        sender,
         grid,
         row_index,
         height,

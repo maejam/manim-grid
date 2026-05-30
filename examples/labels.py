@@ -25,8 +25,8 @@ class LabelsAndNumbers(Scene):
         # the line above is equivalent to:
         # grid.mobs[1:, 0] = grid.row_numbers(font_size=26, color=BLUE)[0:4:1]
 
-        # Labels can be used in-place of numeric indexes for more expressive indexing
+        # Labels can be used in-place of numeric indices for more expressive indexing
         grid.mobs[1, "right"] = Circle(radius=0.2)  # equivalent to grid.mobs[1, 3]
-        # Also works for slices and other complex indexes
+        # Also works for slices and other complex indices
         grid.rects[:, "left"::2].set_fill(WHITE, opacity=0.2)
         grid.add(*grid.mobs[:])

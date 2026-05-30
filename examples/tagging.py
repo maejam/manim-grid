@@ -1,7 +1,7 @@
 """Tag cells.
 
 This example shows how to tag cells with custom key/value metadata.
-To see how this can reveal very useful, see the examples on 'masking' and 'signals'.
+To see how this can become very useful, see the examples on 'masking' and 'signals'.
 """
 
 from manim import *
@@ -16,8 +16,11 @@ class Tagging(Scene):
         # tagging a single cell
         grid.tags[0, 0].foo = "bar"
 
-        # tagging all cells in the last row at once
-        grid.tags[-1].foo = "baz"
+        # tagging all cells in the last row at once with a Sequence of values
+        grid.tags[-1].foo = [1, 2]
+        # when passing a scalar value, it is broadcasted to fill the selection
+        # be careful with mutable values
+        grid.tags[-1].foo = "baz"  # equivalent to ["baz", "baz"]
 
         # updating first column tags
         # all dict methods work the same way on multiple cells or on a single cell

@@ -19,7 +19,7 @@ from manim_grid import Grid, mob_inserted, mobs_assigned
 
 # Functions can be registered easily with a decorator
 @mobs_assigned.connect
-def log_mobs_assigned(grid, index, mobs):
+def log_mobs_assigned(sender, grid, index, mobs):
     logger.info(f"You just assigned {len(mobs)} object(s) to the Grid.")
 
 
@@ -35,11 +35,11 @@ class Signals(Scene):
         # the callback will only be called for that cell
         mob_inserted.connect(self.paint_blue, sender=self.grid.cells[2, 1])
 
-    def rotate_mob_in_cell_2_1(self, cell, grid):
+    def rotate_mob_in_cell_2_1(self, sender, cell, grid):
         if cell.row_index == 2 and cell.col_index == 1:
             cell.mob.rotate(PI)
 
-    def paint_blue(self, cell, grid):
+    def paint_blue(self, sender, cell, grid):
         cell.mob.set_color(BLUE)
 
     # Alternatively connect a staticmethod with the decorator syntax
@@ -47,7 +47,7 @@ class Signals(Scene):
     # Use `@signal_name.connect_via(sender=...)` to provide the sender parameter
     @staticmethod
     @mobs_assigned.connect
-    def add_as_sumobjects(grid, index, mobs):
+    def add_as_sumobjects(sender, grid, index, mobs):
         grid.add(*grid.mobs[index])
 
     def construct(self):
