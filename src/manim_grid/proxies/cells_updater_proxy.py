@@ -1,3 +1,4 @@
+import functools
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial
@@ -135,7 +136,8 @@ class _CMDecoWrapper:
         self._parent._detach_updaters()
         return False
 
-    def __call__(self, func: Callable[..., Any]) -> Callable[[Callable[..., Any]], Any]:
+    def __call__(self, func: Callable[..., Any]) -> Callable[..., Any]:
+        @functools.wraps(func)
         def wrapper(*func_args: Any, **func_kwargs: Any) -> Any:
             self.__enter__()
             try:
