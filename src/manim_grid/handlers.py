@@ -33,6 +33,22 @@ def _max_width_height(cell: "Cell") -> tuple[float, float]:
     return w, h
 
 
+def _make_mobcopy(cell: "Cell") -> m.Mobject:
+    """Copy the original mobject before destructive operations.
+
+    The initial mobject is backed-up in the `_mobcopy` attribute. A `reset_mob` method
+    is also attached to the mobject.
+    """
+    if not hasattr(cell.mob, "_mobcopy"):
+        cell.mob.__dict__["_mobcopy"] = cell.mob.copy()
+
+    def reset_mob() -> None:
+        cell.mob.become(cell.mob.__dict__["_mobcopy"])
+
+    cell.mob.__dict__["reset_mob"] = reset_mob
+    return cast(m.Mobject, cell.mob.__dict__["_mobcopy"])
+
+
 def scale_mobject(
     sender: str, key: str, value: str, grid: "Grid", cell: "Cell"
 ) -> None:
@@ -40,10 +56,13 @@ def scale_mobject(
     if value != "SCALE":
         return
     w, h = _max_width_height(cell)
-    if cell.mob.width > w:
-        cell.mob.scale_to_fit_width(w)
-    if cell.mob.height > h:
-        cell.mob.scale_to_fit_height(h)
+    mobcopy = _make_mobcopy(cell)
+    result = mobcopy.copy()
+    if mobcopy.width > w:
+        result.scale_to_fit_width(w)
+    if mobcopy.height > h:
+        result.scale_to_fit_height(h)
+    cell.mob.become(result)
 
 
 def stretch_mobject(
@@ -53,25 +72,28 @@ def stretch_mobject(
     if value != "STRETCH":
         return
     w, h = _max_width_height(cell)
-    if cell.mob.width > w:
-        cell.mob.stretch_to_fit_width(w)
-    if cell.mob.height > h:
-        cell.mob.stretch_to_fit_height(h)
+    mobcopy = _make_mobcopy(cell)
+    result = mobcopy.copy()
+    if mobcopy.width > w:
+        result.stretch_to_fit_width(w)
+    if mobcopy.height > h:
+        result.stretch_to_fit_height(h)
+    cell.mob.become(result)
 
 
 def crop_mobject(sender: str, key: str, value: str, grid: "Grid", cell: "Cell") -> None:
     """Crop a mobject that is bigger than its Cell Rectangle to fit inside it."""
     if value != "CROP":
         return
-    if not isinstance(cell.mob, m.VMobject):
-        raise TypeError("Can only be used with VMobjects.")
-    if not hasattr(cell.mob, "_mobcopy"):
-        cell.mob.__dict__["_mobcopy"] = cell.mob.copy()
     w, h = _max_width_height(cell)
-    mobcopy = cast(m.VMobject, cell.mob._mobcopy)
+    mobcopy = _make_mobcopy(cell)
+    if not isinstance(mobcopy, m.VMobject):
+        raise TypeError("Can only be used with VMobjects.")
     if mobcopy.width > w or mobcopy.height > h:
         result = clip_vmobject(mobcopy, cell.rect)
         cell.mob.become(result)
+    else:
+        cell.mob.become(mobcopy)
 
 
 ConnectionTuple: TypeAlias = tuple[str, Callable[..., Any], Any]
