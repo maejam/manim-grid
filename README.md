@@ -1,8 +1,12 @@
+> [!WARNING]
+> While the library is in major version 0, the API is not considered stable and can change without notice.  
+
+
 # 📐 `manim-grid` - A powerful Grid Container to ease Mobjects positioning and referencing  
 
 `manim-grid` is a [Manim](https://www.manim.community/) plugin that offers a new way to build scenes and interact with manim. It creates a rectangular grid of cells in which you can place any `Mobject` by using a powerful, [NumPy](https://numpy.org/)-based natural indexing. It handles mobject positioning, automation and provides custom animations.  
 
-It is born from an attempt to build a better `Code` Mobject, more flexible and easier to work with. This goal quickly turned into a flexible multi-purpose tool. It can be used as a ruler to position mobjects in a scene, retrieve them later, and re-assign them on the fly. It can also be used to build event-based scenes.
+It is born from an attempt to build a better `Code` Mobject, more flexible and easier to work with. This goal quickly turned into a flexible multi-purpose tool. It can be used as a ruler to position mobjects in a scene, retrieve them later, and re-assign them on the fly. It can also be used to build event-based scenes.  
 
 ---  
 
@@ -16,7 +20,7 @@ It is born from an attempt to build a better `Code` Mobject, more flexible and e
 - [Internals](#internals)  
   - [Cell](#cell)  
   - [Proxies](#proxies)  
-  - [Tags](#tags)
+  - [Tags/Config](#tags-/-config)
   - [Stencil Viewport and Scrolling](#stencil-viewport-and-scrolling)
   - [Signals](#signals)
 
@@ -32,10 +36,11 @@ It is born from an attempt to build a better `Code` Mobject, more flexible and e
 - **Alignment vectors** - align `Mobjects` to any edge/corner in cells.  
 - **Powerful management of cell attributes** - access any attribute for a single cell or in bulk as you would a numpy array.  
 - **Per-cell metadata** - add key/value tags to cells.  
-- **Scrolling** - the `scroll` method lets you scroll the grid in any direction with a smooth animation.
-- **Inserting** - the `insert_row` and `insert_column` methods let you..., well..., insert rows and columns. With full control over the visual result.
-- **Frame** - add a custom frame around the grid that plays well with its dynamic nature.
-- **Signals** - react to events to automate the Grid behaviour.
+- **Scrolling** - the `scroll` method lets you scroll the grid in any direction with a smooth animation.  
+- **Inserting** - the `insert_row` and `insert_column` methods let you..., well..., insert rows and columns. With full control over the visual result.  
+- **Frame** - add a custom frame around the grid that plays well with its dynamic nature.  
+- **Signals** - react to events to automate the Grid behaviour.  
+- **Per cell configuration** - each cell can be configured and updated independently.  
 - **Fully typed** - for better library and end-user code quality.  
 
 ---  
@@ -103,11 +108,10 @@ class GettingStarted(Scene):
 
 ## More Examples  
 
-The following examples can be found in the [examples](examples/) directory. They are meant to serve as documentation/tutorials on each topic:
+The following examples can be found in the [examples](examples/) directory. They are meant to serve as documentation/tutorials on each topic:  
  - [Getting Started](examples/getting_started.py)
  - [Buffers and Margins](examples/buffers_and_margins.py)
  - [Labels](examples/labels.py)
- - [Alignment](examples/alignment.py)
  - [Scrolling](examples/scrolling.py)
  - [Inserting rows/columns](examples/inserting.py)
  - [Tagging](examples/tagging.py)
@@ -115,13 +119,15 @@ The following examples can be found in the [examples](examples/) directory. They
  - [Frame](examples/frame.py)
  - [Alternative Constructors](examples/alternative_constructors.py)
  - [Signals](examples/signals.py)
+ - [Config and Update](examples/config_and_update.py)
+ - [Builtin Handlers](examples/builtin_signal_handlers.py)
 
 ---  
 
 ### Tips  
 
 - It is necessary to understand the distinction between the Grid internal state (a NumPy array of Cells) and the Grid submobjects. When attributing mobjects to cells (`grid.mobs[...] = ...`), **they are not added as submobjects** to the Grid, which means they will not be visible and will not be transformed with the Grid. A second step is necessary: `grid.add(grid.mobs[...])`. This design is intentional for greater control over transitions and animations. This second step (adding as submobjects) can be automated with Signals.
-- It is **highly recommended to unpack any Group/VGroup when adding/removing submobjects**. i.e., `grid.add(*grid.mobs[...])` is prefered over `grid.add(grid.mobs[...])`. This is because `grid.mobs[...]` returns a VGroup when multiple mobjects are targeted. Adding it directly would require to keep a reference to that Group instance to remove it later. Unpacking it gives more control over removing individual mobjects later.  
+- It is **highly recommended to unpack any Group/VGroup when adding/removing submobjects**. i.e., `grid.add(*grid.mobs[...])` is prefered over `grid.add(grid.mobs[...])`. This is because `grid.mobs[...]` returns a VGroup when multiple mobjects are targeted. Adding it directly would require to keep a reference to that Group instance to remove it later. Unpacking it gives more control over removing individual mobjects later. Because this is easy to forget, a warning is logged when adding or removing Groups without unpacking them.  
 
 ---  
 
@@ -136,28 +142,30 @@ Each `Cell` holds:
 - `old`: the previous `Mobject` that occupied the cell, useful for transition animations.  
 - `rect`: a `Rectangle` that defines the visual bounds of the cell.  
 - `tags`: a dictionary-like `Tags` instance for arbitrary user-defined metadata.  
-- `alignement`: a manim `Vector3D` object (`UP`, `DOWN`, `UL`...).  
+- `config`: a dictionary-like `Config` instance holding cells config options.  
+- `updater`: a `CellUpdater` instance that allows to apply the config options.  
 
 
 ### Proxies  
-The Grid provides access to the underlying NumPy array of cell objects via `grid.cells`. It also defines four proxy objects that give convenient, NumPy-style access to the cell attributes described above. These proxies return as outputs and take in as inputs different types of objects whether you are targeting individual cells or multiple cells at the same time. e.g.: `grid.mobs[0,0]` returns a Mobject, while `grid.mobs[:]` returns a VGroup of all mobjects contained in the grid, in row-major order. The table below summarizes the expected inputs and the returned outputs for each proxy (single cell/bulk):
+The Grid provides access to the underlying NumPy array of cell objects via `grid.cells`. It also defines proxy objects that give convenient, NumPy-style access to the cell attributes described above. These proxies return as outputs and take in as inputs different types of objects when targeting individual cells or multiple cells at the same time. e.g.: `grid.mobs[0,0]` returns a Mobject, while `grid.mobs[:]` returns a VGroup of all mobjects contained in the grid, in row-major order. The table below summarizes the expected inputs and the returned outputs for each proxy (single cell/bulk):
 
-| Proxy      | Purpose                                  | Readable (`__getitem__`)         | Writeable (`__setitem__`)                 |
-|------------|------------------------------------------|----------------------------------|-------------------------------------------|
-|`.mobs`     |Access or assign Mobject(s) to cell(s).   |✅ Output: Mobject/VGroup         |✅ Input: Mobject/Sequence[Mobject]|(V)Goup|
-|`.olds`     |Retrieve the previously stored Mobject(s).|✅ Output: Mobject/VGroup         |❌                                         |
-|`.rects`    |Access the lattice Rectangles.            |✅ Output: Rectangle/VGroup       |❌                                         |
-|`.tags`     |Store and manipulate metadata in Cells.   |✅ Output: Tags/TagsList          |❌                                         |
-|`.alignment`|Set the alignment in cell(s).             |✅ Output: Vector3D/list[Vector3D]|✅ Input: Vector3D/Vector3D
+| Proxy         | Purpose                                  | Readable (`__getitem__`)     | Writeable (`__setitem__`)                 |
+|---------------|------------------------------------------|------------------------------|-------------------------------------------|
+|`.mobs`        |Access or assign Mobject(s) to cell(s).   |✅ Output: Mobject/VGroup     |✅ Input: Mobject/Sequence[Mobject]|(V)Goup|
+|`.olds`        |Retrieve the previously stored Mobject(s).|✅ Output: Mobject/VGroup     |❌                                         |
+|`.rects`       |Access the lattice Rectangles.            |✅ Output: Rectangle/VGroup   |❌                                         |
+|`.tags`        |Store and manipulate metadata in Cells.   |✅ Output: Tags/TagsList      |❌                                         |
+|`.config`      |Set the config options in cell(s).        |✅ Output: Config/ConfigList  |❌                                         |
+|`.update_cells`|Force an update based on the config.      |✅ Output: CellUpdater/CellUpdaterList|❌                                 |
 
 
-### Tags  
-Each `Cell` holds a `Tags` instance in their `tags` attribute. This class acts as a python dictionary with dot attribute access.
-This `Tags` instance is returned when indexing a single `Cell`, whereas a `TagsList` instance is returned when indexing multiple cells through the `TagsProxy`. `TagsList` is a `list` subclass which also defines all dict methods as well as `__getattr__`, `__setattr__`, and  `__delattr__`. This allows to interact with a `TagsList` instance as if it where a single `Tags` instance, effectively acting on all child `Tags` instances in one command.  
+### Tags / Config  
+Each `Cell` holds a `Tags` instance in their `tags` attribute and a `Config` instance in their `config` attribute. These 2 classes are subclasses of `manim_grid.proxies.map_list.Map` which is a `MutableMapping` with dot attribute access and key validation.
+This `Tags`/`Config`  instance is returned when indexing a single `Cell`, whereas a `TagsList`/`ConfigList` instance is returned when indexing multiple cells (subclasses of `manim_grid.proxies.map_list.MapList`). `MapList` is also a `MutableMapping` but holds list of the scalar value type as values. `MapList` also allows to broadcast scalar values to lists of scalar values for convenince. This allows to interact with a `Map` and `MapList` instances with the same Mapping interface.  
 
 For example, `grid.tags[:].update(foo="bar")` will update all `Tags` instances in the `TagsList` returned by the `TagsProxy` (the `grid.tags[:]` part). Similarly, `grid.tags[:].pop("foo")` will pop the `foo` key from all the child `Tags` in the `TagsList` and will return the popped values in a list. If the `foo` key is missing in any `Tags`, it will raise a `KeyError`. Pass a default value to avoid this: `grid.tags[:].pop("foo", MISSING)`.  
 
-All dict methods work on `TagsList` in a similar way they work on `Tags`.  
+All dict methods work on `Mapist` in a similar way they work on `Map`.  
 
 ### Stencil Viewport and Scrolling  
 When a `Grid` is instantiated with `num_visible_rows` and/or `num_visible_cols`, a [Stencil](https://github.com/maejam/manim-utils) instance is added to the grid and is stored in the `grid._stencil` attribute accesible via the `grid.stencil` property. Its purpose is to hide cells that should not be visible. It is a `manim.Difference` object between the whole grid and a `Rectangle` surrounding the visible cells that defines the viewport boundaries. The stencil is painted the same color as the scene background to give the impression that only the viewport is added to the screen. The stencil is always transformed with the grid and stays in sync with it. The `viewport`, i.e. the clip in the `Stencil` usually stays in sync as well, except when using two context managers:
@@ -192,4 +200,5 @@ class Stencil(Scene):
 ```
 
 ### Signals
-The signals system is simply implemented with the great [blinker](https://blinker.readthedocs.io/en/stable/) library.
+The signals system is implemented with the great [blinker](https://blinker.readthedocs.io/en/stable/) library.
+See the available signals and their parameters in the [signals.py](src/manim_grid/signals.py) module.
