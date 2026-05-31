@@ -1,3 +1,40 @@
+## v0.5.0 (2026-05-31)
+
+### Feat
+
+- **handlers**: add `scale_on_cell_updating`, `stretch_on_cell_updating` and `crop_on_cell_updating`
+- **handlers**: add `align_on_mob_inserted` and `align_on_cell_updating`
+- **handlers**: add `warn_on_group_added` and `warn_on_group_removed`
+- **handlers**: add HandlerManager
+- **ConfigProxy**: add priority getter and setter methods
+- **MapList**: dict based proxies wrap there values
+- **CellUpdaterProxy**: add CellsUpdaterProxy
+- **ConfigProxy**: add ConfigProxy
+- **Grid**: add name to all submobjects for easier debugging
+- **signals**: add `mob_added` and `mob_removed` signals
+- **Grid**: add `Grid.gtags` to attach metadata to the Grid itself
+
+### Fix
+
+- **helpers**: define `__repr__` in `Missing` Enum to only return value
+- **frame**: call `_update_frame` inside update_viewport for static frames
+- **Grid**: set z_index to Grid z_index when inserting mobs
+- **viewport**: `update_viewport` updates the viewport before the stencil
+- **signals**: duplicate the sender as a keyword argument
+- **stencil**: prevent artifacts when scrolling past the last row/col
+- **viewport**: fix bug when updating the viewport after a scroll
+- **BaseProxy**: improve error message in index validity assertion
+- **frame**: fix frame margins
+- **stencil**: adjust the stencil around the lattice
+- **typing**: allow VGroup in `MobsProxy.__setitem__`
+
+### Refactor
+
+- **proxies**: turn `Tags`/`TagsList` into reusable `Map`/`MapList` base classes
+- **viewport**: use `manim_utils.get_bounds` to recompute viewport
+- **signals**: rename `mobs_added` to `mobs_assigned`
+- **BaseProxy**: improve default implementations in BaseProxy
+
 ## v0.4.0 (2026-04-19)
 
 ### Feat
