@@ -34,20 +34,21 @@ def _max_width_height(cell: "Cell") -> tuple[float, float]:
     return w, h
 
 
-def _make_mobcopy(cell: "Cell") -> m.Mobject:
-    """Copy the original mobject before destructive operations.
+def _get_template(cell: "Cell") -> m.Mobject:
+    """Backup and return the original mobject before destructive operations.
 
-    The initial mobject is backed-up in the `_mobcopy` attribute. A `reset_mob` method
-    is also attached to the mobject.
+    The initial mobject is backed-up in the `_template` attribute on the mobject itself.
+    A `reset_mob` method is also attached to the mobject that allows to reset the
+    mobject to its template shape.
     """
-    if not hasattr(cell.mob, "_mobcopy"):
-        cell.mob.__dict__["_mobcopy"] = cell.mob.copy()
+    if not hasattr(cell.mob, "_template"):
+        cell.mob.__dict__["_template"] = cell.mob.copy()
 
     def reset_mob(self: m.Mobject) -> None:
-        self.become(self.__dict__["_mobcopy"])
+        self.become(self.__dict__["_template"])
 
     cell.mob.__dict__["reset_mob"] = types.MethodType(reset_mob, cell.mob)
-    return cast(m.Mobject, cell.mob.__dict__["_mobcopy"])
+    return cast(m.Mobject, cell.mob.__dict__["_template"])
 
 
 def scale_mobject(
@@ -57,11 +58,11 @@ def scale_mobject(
     if value != "SCALE":
         return
     w, h = _max_width_height(cell)
-    mobcopy = _make_mobcopy(cell)
-    result = mobcopy.copy()
-    if mobcopy.width > w:
+    template = _get_template(cell)
+    result = template.copy()
+    if template.width > w:
         result.scale_to_fit_width(w)
-    if mobcopy.height > h:
+    if template.height > h:
         result.scale_to_fit_height(h)
     cell.mob.become(result)
 
@@ -73,11 +74,11 @@ def stretch_mobject(
     if value != "STRETCH":
         return
     w, h = _max_width_height(cell)
-    mobcopy = _make_mobcopy(cell)
-    result = mobcopy.copy()
-    if mobcopy.width > w:
+    template = _get_template(cell)
+    result = template.copy()
+    if template.width > w:
         result.stretch_to_fit_width(w)
-    if mobcopy.height > h:
+    if template.height > h:
         result.stretch_to_fit_height(h)
     cell.mob.become(result)
 
@@ -87,14 +88,14 @@ def crop_mobject(sender: str, key: str, value: str, grid: "Grid", cell: "Cell") 
     if value != "CROP":
         return
     w, h = _max_width_height(cell)
-    mobcopy = _make_mobcopy(cell)
-    if not isinstance(mobcopy, m.VMobject):
+    template = _get_template(cell)
+    if not isinstance(template, m.VMobject):
         raise TypeError("Can only be used with VMobjects.")
-    if mobcopy.width > w or mobcopy.height > h:
-        result = clip_vmobject(mobcopy, cell.rect)
+    if template.width > w or template.height > h:
+        result = clip_vmobject(template, cell.rect)
         cell.mob.become(result)
     else:
-        cell.mob.become(mobcopy)
+        cell.mob.become(template)
 
 
 ConnectionTuple: TypeAlias = tuple[str, Callable[..., Any], Any]
