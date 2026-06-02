@@ -1,3 +1,4 @@
+import types
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
@@ -42,10 +43,10 @@ def _make_mobcopy(cell: "Cell") -> m.Mobject:
     if not hasattr(cell.mob, "_mobcopy"):
         cell.mob.__dict__["_mobcopy"] = cell.mob.copy()
 
-    def reset_mob() -> None:
-        cell.mob.become(cell.mob.__dict__["_mobcopy"])
+    def reset_mob(self: m.Mobject) -> None:
+        self.become(self.__dict__["_mobcopy"])
 
-    cell.mob.__dict__["reset_mob"] = reset_mob
+    cell.mob.__dict__["reset_mob"] = types.MethodType(reset_mob, cell.mob)
     return cast(m.Mobject, cell.mob.__dict__["_mobcopy"])
 
 
