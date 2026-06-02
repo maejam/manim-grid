@@ -40,12 +40,27 @@ def _get_template(cell: "Cell") -> m.Mobject:
     The initial mobject is backed-up in the `_template` attribute on the mobject itself.
     A `reset_mob` method is also attached to the mobject that allows to reset the
     mobject to its template shape.
+
+    Notes
+    -----
+    The template position will be kept in-sync with the mobject (i.e. when the mobject
+    is moved around, its alignment is changed or it is attributed to another cell for
+    example). Changes in other properties (color, opacity, shape...) will be lost when
+    the mobject is reconstructed from the template. In that case, it is necessary to
+    use `reset_mob` first, make the changes and then update it.
     """
     if not hasattr(cell.mob, "_template"):
         cell.mob.__dict__["_template"] = cell.mob.copy()
+        cell.mob.__dict__["_last_center"] = cell.mob.get_center()
+
+    # update the template position
+    center = cell.mob.get_center()
+    shift_vec = center - cell.mob.__dict__["_last_center"]
+    cell.mob.__dict__["_template"].shift(shift_vec)
 
     def reset_mob(self: m.Mobject) -> None:
         self.become(self.__dict__["_template"])
+        del self.__dict__["_template"]
 
     cell.mob.__dict__["reset_mob"] = types.MethodType(reset_mob, cell.mob)
     return cast(m.Mobject, cell.mob.__dict__["_template"])
@@ -65,6 +80,7 @@ def scale_mobject(
     if template.height > h:
         result.scale_to_fit_height(h)
     cell.mob.become(result)
+    cell.mob.__dict__["_last_center"] = cell.mob.get_center()
 
 
 def stretch_mobject(
@@ -81,6 +97,7 @@ def stretch_mobject(
     if template.height > h:
         result.stretch_to_fit_height(h)
     cell.mob.become(result)
+    cell.mob.__dict__["_last_center"] = cell.mob.get_center()
 
 
 def crop_mobject(sender: str, key: str, value: str, grid: "Grid", cell: "Cell") -> None:
@@ -96,6 +113,7 @@ def crop_mobject(sender: str, key: str, value: str, grid: "Grid", cell: "Cell") 
         cell.mob.become(result)
     else:
         cell.mob.become(template)
+    cell.mob.__dict__["_last_center"] = cell.mob.get_center()
 
 
 ConnectionTuple: TypeAlias = tuple[str, Callable[..., Any], Any]

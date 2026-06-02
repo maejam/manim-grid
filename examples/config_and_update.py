@@ -53,7 +53,7 @@ class AlignmentExample(Scene):
         # Previous alignment is remembered
         grid.mobs[:, 0] = [Text("remembered", font_size=16) for _ in range(3)]
 
-        grid.add(grid.mobs[:])
+        grid.add(*grid.mobs[:])
 
 
 class ModeExample(Scene):
