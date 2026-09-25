@@ -86,7 +86,10 @@ class MapBase(ABC, Generic[IT, UT]):
     def __getattr__(self, name: str) -> Any:
         if name.startswith("__") and name.endswith("__"):
             raise AttributeError(name)
-        return self[name]
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name) from None
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name in {"_data", "_owner", "_maps"}:
@@ -98,7 +101,10 @@ class MapBase(ABC, Generic[IT, UT]):
         if name.startswith("_"):
             super().__delattr__(name)
         else:
-            del self[name]
+            try:
+                del self[name]
+            except KeyError:
+                raise AttributeError(name) from None
 
 
 class Map(MapBase[IT, UT], MutableMapping[str, UT | _Missing]):

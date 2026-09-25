@@ -42,9 +42,9 @@ def test_tags_setattr_getattr_and_delattr(simple_grid: Grid):
     simple_grid.tags[1, 1].foo = "bar"
     assert simple_grid.tags[1, 1].foo == "bar"
     del simple_grid.tags[1, 1].foo
-    with pytest.raises(KeyError, match="foo"):
+    with pytest.raises(AttributeError, match="foo"):
         assert simple_grid.tags[1, 1].foo is MISSING
-    with pytest.raises(KeyError, match="baz"):
+    with pytest.raises(AttributeError, match="baz"):
         assert simple_grid.tags[1, 1].baz is MISSING
 
 
@@ -95,7 +95,7 @@ def test_tagslist_pop(simple_grid: Grid):
     simple_grid.tags[:].update({"foo": ["bar"] * 6, "baz": [42] * 6})
     foo = simple_grid.tags[0].pop("foo")
     assert foo == ["bar"] * 3
-    with pytest.raises(KeyError, match="foo"):
+    with pytest.raises(AttributeError, match="foo"):
         _ = simple_grid.tags[0].foo
     assert simple_grid.tags[0].baz == [42] * 3
 
