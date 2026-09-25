@@ -32,4 +32,6 @@ class RectsProxy(ReadableProxy[m.Rectangle, m.VGroup]):
     """
 
     _attr: str = "rect"
-    _bulk_container = m.VGroup
+
+    def _get_bulk_container_type(self, values: list[m.Rectangle]) -> type[m.VGroup]:
+        return m.VGroup

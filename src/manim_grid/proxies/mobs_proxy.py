@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 
 class MobsProxy(
-    ReadableProxy[m.Mobject, m.VGroup],
+    ReadableProxy[m.Mobject, m.Group | m.VGroup],
     WriteableProxy[m.Mobject, Sequence[m.Mobject] | m.Group | m.VGroup],
 ):
     """Proxy that provides read-write access to the ``mob`` attribute of each cell.
@@ -60,7 +60,6 @@ class MobsProxy(
     """
 
     _attr = "mob"
-    _bulk_container = m.VGroup
 
     def __init__(
         self,
@@ -69,6 +68,19 @@ class MobsProxy(
     ) -> None:
         super().__init__(grid)
         self._margin = margin
+
+    @overload
+    def _get_bulk_container_type(self, values: list[m.Mobject]) -> type[m.Group]: ...
+
+    @overload
+    def _get_bulk_container_type(self, values: list[m.VMobject]) -> type[m.VGroup]: ...
+
+    def _get_bulk_container_type(
+        self, values: Sequence[m.Mobject | m.VMobject]
+    ) -> type[m.Group] | type[m.VGroup]:
+        if all(isinstance(val, m.VMobject) for val in values):
+            return m.VGroup
+        return m.Group
 
     @overload
     def __setitem__(

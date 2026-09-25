@@ -81,3 +81,14 @@ def test_error_when_assigning_with_non_matching_sequence_len(simple_grid):
         GridValueError, match="Length mismatch between the selected cells"
     ):
         simple_grid.mobs[0, :] = [m.Circle()]
+
+
+def test_indexing_returns_VGroup_if_only_VMobjects(simple_grid):
+    simple_grid.mobs[0] = [m.Circle(), m.Rectangle(), m.Dot()]
+    assert isinstance(simple_grid.mobs[0], m.VGroup)
+
+
+def test_indexing_returns_Group_if_at_least_one_not_VMobject(simple_grid):
+    simple_grid.mobs[0] = [m.Circle(), m.Rectangle(), m.Mobject()]
+    assert isinstance(simple_grid.mobs[0], m.Group)
+    assert not isinstance(simple_grid.mobs[0], m.VGroup)

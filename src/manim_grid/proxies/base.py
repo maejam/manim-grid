@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from collections.abc import (
     Callable,
     Generator,
@@ -11,6 +12,7 @@ from typing import (
     overload,
 )
 
+import manim as m
 import numpy as np
 
 from manim_grid.exceptions import GridValueError
@@ -129,19 +131,16 @@ BO = TypeVar("BO")
 class ReadableProxy(_BaseProxy[S], Generic[S, BO]):
     """Mixin that implements read-only indexing for a proxy.
 
-    Attributes
-    ----------
-    _bulk_container
-        The type of the container returned when indexing in bulk
-        (e.g. ``list[S]``, ``VGroup``...). Used to instantiate the return value.
-
     See Also
     --------
     _WriteableProxy : counterpart providing ``__setitem__``.
 
     """
 
-    _bulk_container: type
+    @abstractmethod
+    def _get_bulk_container_type(self, values: list[S]) -> Callable[[list[S]], BO]:
+        """Return the bulk container class to instantiate."""
+        raise NotImplementedError
 
     @overload
     def __getitem__(self, index: ScalarIndex) -> S: ...
@@ -235,10 +234,11 @@ class ReadableProxy(_BaseProxy[S], Generic[S, BO]):
         if isinstance(subarray, Cell):
             return cast(S, getattr(subarray, self._attr))
 
-        return cast(
-            BO,
-            self._bulk_container(getattr(cell, self._attr) for cell in subarray.flat),
-        )
+        values = [getattr(cell, self._attr) for cell in subarray.flat]
+        container = self._get_bulk_container_type(values)
+        if container is m.Group:
+            return container(*values)  # Group does not accept iterables
+        return container(values)
 
 
 BI = TypeVar("BI")

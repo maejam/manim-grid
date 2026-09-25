@@ -169,4 +169,6 @@ class ConfigProxy(ReadableProxy[Config, ConfigList]):
     """
 
     _attr = "config"
-    _bulk_container = ConfigList
+
+    def _get_bulk_container_type(self, values: list[Config]) -> type[ConfigList]:
+        return ConfigList

@@ -78,4 +78,6 @@ class TagsProxy(ReadableProxy[Tags, TagsList]):
     """
 
     _attr = "tags"
-    _bulk_container = TagsList
+
+    def _get_bulk_container_type(self, values: list[Tags]) -> type[TagsList]:
+        return TagsList

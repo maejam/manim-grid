@@ -163,4 +163,8 @@ class CellsUpdaterProxy(ReadableProxy[CellUpdater, CellUpdaterList]):
     """
 
     _attr = "updater"
-    _bulk_container = CellUpdaterList
+
+    def _get_bulk_container_type(
+        self, values: list[CellUpdater]
+    ) -> type[CellUpdaterList]:
+        return CellUpdaterList

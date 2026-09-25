@@ -7,7 +7,7 @@ import manim as m
 import numpy as np
 from blinker import signal
 from manim.typing import Vector3D, Vector3DLike
-from manim_utils import Stencil, get_bounds
+from manim_utils import GroupDict, Stencil, get_bounds
 
 from manim_grid.exceptions import (
     GridError,
@@ -961,7 +961,11 @@ class Grid(m.Group):
         height: float | None = None,
         label: str | None = None,
         shift_tags: bool = False,
-    ) -> Generator[tuple[TrackedLazyAnimation, m.VDict, m.ValueTracker], None, None]:
+    ) -> Generator[
+        tuple[TrackedLazyAnimation, GroupDict[m.Mobject] | m.VDict, m.ValueTracker],
+        None,
+        None,
+    ]:
         """Insert a new row in the Grid.
 
         The Grid geometry will not be changed and cells identity is preserved after
@@ -996,14 +1000,15 @@ class Grid(m.Group):
 
         Yields
         ------
-        tuple[Animation, VDict, ValueTracker]
+        tuple[Animation, GroupDict | VDict, ValueTracker]
             The first element in the yielded tuple is the shift animation for the rows
             below the inserted one. It can be played directly. If not played, an instant
             shift will happen when exiting the context manager.
-            The second element is a VDict containing the last row mobjects
-            (keys: `mobs`, `olds` and `rects`). It can be used to animate the last row
-            removal (e.g. FadeOut) or style it. These mobjects will be removed from the
-            grid when exiting the context manager.
+            The second element is a VDict (if all elements are VMobjects) or a
+            GroupDict (otherwise) containing the last row (V)Mobjects
+            (keys: `mobs`, `olds` and `rects`). It can be used to animate
+            the last row removal (e.g. FadeOut) or style it. These mobjects will be
+            removed from the grid when exiting the context manager.
             The third element is a ValueTracker tracking the advancement of the shift
             animation. Can be useful in conjunction with :meth:`update_viewport` for
             instance to precisely time the start of the viewport animation.
@@ -1072,12 +1077,17 @@ class Grid(m.Group):
         # NOTE: self.cells[row_index + 1 :, :] = self.cells[row_index:-1, :]
         # would breack Cells identity => shift member mobjects instead
 
-        d: Mapping[Hashable, m.VMobject] = {
+        d: Mapping[str, m.Mobject | m.VMobject] = {
             "mobs": self.mobs[-1],
             "olds": self.olds[-1],
             "rects": self.rects[-1],
         }
-        last_row = m.VDict(d)
+        if all(isinstance(mob, m.VMobject) for mob in d.values()):
+            last_row: m.VDict | GroupDict[m.Mobject] = m.VDict(
+                cast(Mapping[Hashable, m.VMobject], d)
+            )
+        else:
+            last_row = GroupDict(d)
 
         attrs_to_shift = ["config", "mob", "old", "rect"]
         if shift_tags:
@@ -1117,8 +1127,8 @@ class Grid(m.Group):
         # is played.
         rows_to_shift = slice(row_index + 1, None)
 
-        def grp_factory() -> m.VGroup:
-            return m.VGroup(
+        def grp_factory() -> m.Group:
+            return m.Group(
                 *self.mobs[rows_to_shift],
                 *self.olds[rows_to_shift],
                 *self.rects[rows_to_shift],
@@ -1182,7 +1192,11 @@ class Grid(m.Group):
         width: float | None = None,
         label: str | None = None,
         shift_tags: bool = False,
-    ) -> Generator[tuple[TrackedLazyAnimation, m.VDict, m.ValueTracker], None, None]:
+    ) -> Generator[
+        tuple[TrackedLazyAnimation, GroupDict[m.Mobject] | m.VDict, m.ValueTracker],
+        None,
+        None,
+    ]:
         """Insert a new column in the Grid.
 
         The Grid geometry will not be changed and cells identity is preserved after
@@ -1219,11 +1233,12 @@ class Grid(m.Group):
 
         Yields
         ------
-        tuple[Animation, VDict, ValueTracker]
+        tuple[Animation, GroupDict | VDict, ValueTracker]
             The first element in the yielded tuple is the shift animation for the
             columns below the inserted one. It can be played directly. If not played,
             an instant shift will happen when exiting the context manager.
-            The second element is a VDict containing the last column mobjects
+            The second element is a VDict (if all elements are VMobjects) or a
+            GroupDict (otherwise) containing the last column (V)Mobjects
             (keys: `mobs`, `olds` and `rects`). It can be used to animate the last col
             removal (e.g. FadeOut) or style it. These mobjects will be removed from the
             grid when exiting the context manager.
@@ -1295,12 +1310,18 @@ class Grid(m.Group):
         # NOTE: self.cells[:, col_index + 1 :] = self.cells[:, col_index:-1]
         # would breack Cells identity => shift member mobjects instead
 
-        d: Mapping[Hashable, m.VMobject] = {
+        d: Mapping[str, m.Mobject | m.VMobject] = {
             "mobs": self.mobs[:, -1],
             "olds": self.olds[:, -1],
             "rects": self.rects[:, -1],
         }
-        last_col = m.VDict(d)
+        if all(isinstance(mob, m.VMobject) for mob in d.values()):
+            last_col: m.VDict | GroupDict[m.Mobject] = m.VDict(
+                cast(Mapping[Hashable, m.VMobject], d)
+            )
+        else:
+            last_col = GroupDict(d)
+
         last_col_rects = self.rects[:, -1]
 
         attrs_to_shift = ["config", "mob", "old", "rect"]
@@ -1341,8 +1362,8 @@ class Grid(m.Group):
         # is played.
         cols_to_shift = slice(col_index + 1, None)
 
-        def grp_factory() -> m.VGroup:
-            return m.VGroup(
+        def grp_factory() -> m.Group:
+            return m.Group(
                 *self.mobs[:, cols_to_shift],
                 *self.olds[:, cols_to_shift],
                 *self.rects[:, cols_to_shift],

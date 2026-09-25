@@ -3,6 +3,7 @@ from copy import copy
 import manim as m
 import numpy as np
 import pytest
+from manim_utils import GroupDict
 
 from manim_grid.exceptions import (
     GridFrameError,
@@ -494,6 +495,46 @@ def test_insert_row_shift_tags_True(simple_grid: Grid):
         assert not any(t1 is t2 for t2 in tags)
 
 
+def test_insert_row_returns_last_row_as_VDict_if_only_VMobjects(simple_grid: Grid):
+    olds = [m.VMobject(), m.VMobject(), m.VMobject()]
+    mobs = [m.VMobject(), m.VMobject(), m.VMobject()]
+    rects = simple_grid.rects[-1]
+    simple_grid.mobs[-1] = olds
+    simple_grid.mobs[-1] = mobs
+    with simple_grid.insert_row(1) as (_, last_row, _):
+        ...
+    assert isinstance(last_row, m.VDict)
+    assert len(last_row["olds"]) == 3
+    assert last_row["olds"].submobjects == olds
+
+    assert len(last_row["mobs"]) == 3
+    assert last_row["mobs"].submobjects == mobs
+
+    assert len(last_row["rects"]) == 3
+    assert last_row["rects"].submobjects == rects.submobjects
+
+
+def test_insert_row_returns_last_row_as_GroupDict_if_at_least_one_Mobject(
+    simple_grid: Grid,
+):
+    olds = [m.VMobject(), m.VMobject(), m.Mobject()]
+    mobs = [m.VMobject(), m.VMobject(), m.VMobject()]
+    rects = simple_grid.rects[-1]
+    simple_grid.mobs[-1] = olds
+    simple_grid.mobs[-1] = mobs
+    with simple_grid.insert_row(1) as (_, last_row, _):
+        ...
+    assert isinstance(last_row, GroupDict)
+    assert len(last_row["olds"]) == 3
+    assert last_row["olds"].submobjects == olds
+
+    assert len(last_row["mobs"]) == 3
+    assert last_row["mobs"].submobjects == mobs
+
+    assert len(last_row["rects"]) == 3
+    assert last_row["rects"].submobjects == rects.submobjects
+
+
 # ----------------------------------------------------------------------
 # Grid - insert_column
 # ----------------------------------------------------------------------
@@ -645,6 +686,46 @@ def test_insert_col_shift_tags_True(simple_grid: Grid):
     # col 1 new
     for t1 in simple_grid.tags[:, 1]:
         assert not any(t1 is t2 for t2 in tags)
+
+
+def test_insert_col_returns_last_col_as_VDict_if_only_VMobjects(simple_grid: Grid):
+    olds = [m.VMobject(), m.VMobject()]
+    mobs = [m.VMobject(), m.VMobject()]
+    rects = simple_grid.rects[:, -1]
+    simple_grid.mobs[:, -1] = olds
+    simple_grid.mobs[:, -1] = mobs
+    with simple_grid.insert_column(1) as (_, last_col, _):
+        ...
+    assert isinstance(last_col, m.VDict)
+    assert len(last_col["olds"]) == 2
+    assert last_col["olds"].submobjects == olds
+
+    assert len(last_col["mobs"]) == 2
+    assert last_col["mobs"].submobjects == mobs
+
+    assert len(last_col["rects"]) == 2
+    assert last_col["rects"].submobjects == rects.submobjects
+
+
+def test_insert_row_returns_last_col_as_GroupDict_if_at_least_one_Mobject(
+    simple_grid: Grid,
+):
+    olds = [m.VMobject(), m.Mobject()]
+    mobs = [m.VMobject(), m.VMobject()]
+    rects = simple_grid.rects[:, -1]
+    simple_grid.mobs[:, -1] = olds
+    simple_grid.mobs[:, -1] = mobs
+    with simple_grid.insert_column(1) as (_, last_col, _):
+        ...
+    assert isinstance(last_col, GroupDict)
+    assert len(last_col["olds"]) == 2
+    assert last_col["olds"].submobjects == olds
+
+    assert len(last_col["mobs"]) == 2
+    assert last_col["mobs"].submobjects == mobs
+
+    assert len(last_col["rects"]) == 2
+    assert last_col["rects"].submobjects == rects.submobjects
 
 
 # ----------------------------------------------------------------------
