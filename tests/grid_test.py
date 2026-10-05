@@ -3,7 +3,7 @@ from copy import copy
 import manim as m
 import numpy as np
 import pytest
-from manim_utils import GroupDict
+from manim_mjutils import GroupDict
 
 from manim_grid.exceptions import (
     GridFrameError,

@@ -1,6 +1,6 @@
 from enum import Enum
 
-from manim_utils import LazyAnimation, TrackedAnimationMixin
+from manim_mjutils import LazyAnimation, TrackedAnimationMixin
 
 
 # constants and sentinels

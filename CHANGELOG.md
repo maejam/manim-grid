@@ -31,7 +31,7 @@
 ### Refactor
 
 - **proxies**: turn `Tags`/`TagsList` into reusable `Map`/`MapList` base classes
-- **viewport**: use `manim_utils.get_bounds` to recompute viewport
+- **viewport**: use `manim_mjutils.get_bounds` to recompute viewport
 - **signals**: rename `mobs_added` to `mobs_assigned`
 - **BaseProxy**: improve default implementations in BaseProxy
 

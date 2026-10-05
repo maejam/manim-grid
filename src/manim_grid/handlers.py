@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 import manim as m
 from blinker import ANY, signal
-from manim_utils import clip_vmobject, get_bounds
+from manim_mjutils import clip_vmobject, get_bounds
 
 if TYPE_CHECKING:
     from manim_grid.grid import Cell, Grid

@@ -7,7 +7,7 @@ import manim as m
 import numpy as np
 from blinker import signal
 from manim.typing import Vector3D, Vector3DLike
-from manim_utils import GroupDict, Stencil, get_bounds
+from manim_mjutils import GroupDict, Stencil, get_bounds
 
 from manim_grid.exceptions import (
     GridError,
@@ -130,7 +130,7 @@ class Grid(m.Group):
 
     * creating the underlying ``np.ndarray`` of ``Cell`` instances,
     * arranging the rectangle placeholders in a Manim ``VGroup``,
-    * adding a ``stencil`` in the form of a :class:`manim_utils.Stencil` object
+    * adding a ``stencil`` in the form of a :class:`manim_mjutils.Stencil` object
       if at least one of ``num_visible_rows`` or ``num_visible_cols`` is specified.
     * exposing convenient proxy objects (``mobs``, ``olds``, ...) that forward
       attribute access to the underlying cells.
@@ -155,7 +155,7 @@ class Grid(m.Group):
     col_labels
         Optional sequence of strings that label the columns.
     num_visible_rows
-        The number of rows that should be visible. A :class:`manim_utils.Stencil`
+        The number of rows that should be visible. A :class:`manim_mjutils.Stencil`
         will be used to cover the hidden rows. This stencil is accessible through
         the attribute `grid.stencil`. If none of `num_visible_rows` and
         `num_visible_cols` is defined, the stencil will not be created.

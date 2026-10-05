@@ -11,7 +11,7 @@ requires-python = ">=3.11, <3.14"
 dependencies = [
     "blinker>=1.9.0",
     "manim>=0.19.0",
-    "manim-utils",
+    "manim-mjutils",
 ]
 
 [dependency-groups]
@@ -35,7 +35,7 @@ source-include = [
 ]
 
 [tool.uv.sources]
-manim-utils = { git = "https://github.com/maejam/manim-utils.git" }
+manim-mjutils = { git = "https://github.com/maejam/manim-mjutils.git" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
