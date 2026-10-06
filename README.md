@@ -57,7 +57,7 @@ cd myproject
 ```bash
 uv add git+https://github.com/maejam/manim-grid.git
 ```
-Requires `Python >= 3.11, < 3.14` and `manim >= 0.19`  
+Requires `Python >= 3.11, < 3.15` and `manim >= 0.19`  
 
 ---  
 
