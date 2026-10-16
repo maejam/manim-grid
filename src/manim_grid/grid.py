@@ -538,15 +538,21 @@ class Grid(m.Group):
     def add(self, *mobjects: m.Mobject) -> Self:
         """Add mobjects as submobjects.
 
-        This overriden method makes sure the right order of submobjects is preserved.
-        The stencil should cover the newly added mobjects and the frame should cover the
-        stencil.
-
+        This overriden method sends the "mob_added" signal and restores the layers
+        order.
         """
         super().add(*mobjects)
         for mob in mobjects:
             signal("mob_added").send(mob, mob=mob, grid=self)
 
+        self.restore_layers()
+        return self
+
+    def restore_layers(self) -> Self:
+        """Restore the right order of submobjects.
+
+        The stencil should cover the mobjects and the frame should cover the stencil.
+        """
         if self._stencil is not None:
             super().add(self.stencil)
         if self._frame is not None:
